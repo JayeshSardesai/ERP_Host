@@ -1370,9 +1370,9 @@ const FeePaymentsTab: React.FC = () => {
   };
 
   return (
-    <div className="space-y-4 sm:space-y-6">
+    <div className="space-y-4 sm:space-y-6 max-w-full overflow-x-hidden">
       {/* Filters */}
-      <div className="bg-white rounded-lg shadow p-4 sm:p-6">
+      <div className="bg-white rounded-lg shadow p-4 sm:p-6 overflow-hidden">
         <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4">Fee Payments Management</h2>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
