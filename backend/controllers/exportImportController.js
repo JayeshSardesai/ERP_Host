@@ -752,186 +752,21 @@ function getAdminHeaders() {
     'permissions_systemSettings', 'permissions_schoolSettings', 'permissions_dataExport', 'permissions_auditLogs',
     'bankName', 'accountNumber', 'bankIFSC', 'accountHolderName', 'bankBranchName',
     'bloodGroup', 'nationality', 'religion', 'isActive', 'profileImage'
-  ];
-}
-
-
 // --- Define Headers (Teacher) ---
 function getTeacherHeaders() {
   return [
     'userId', 'firstName', 'middleName', 'lastName', 'email', 'primaryPhone',
-    'secondaryPhone', 'whatsappNumber', 'dateOfBirth', 'gender',
-    'permanentStreet', 'permanentArea', 'permanentCity', 'permanentState', 'permanentPincode', 'permanentCountry', 'permanentLandmark',
-    'sameAsPermanent', 'currentStreet', 'currentArea', 'currentCity', 'currentState', 'currentPincode', 'currentCountry', 'currentLandmark',
-    'aadharNumber', 'panNumber', 'joiningDate', 'highestQualification',
+    'dateOfBirth', 'gender', 'permanentCity', 'permanentState', 'permanentPincode',
+    'aadharNumber', 'joiningDate', 'highestQualification',
     'specialization', 'totalExperience', 'subjects', 'classTeacherOf',
-    'employeeId', 'bankName', 'bankAccountNo', 'bankIFSC',
-    'bloodGroup', 'nationality', 'religion', 'isActive', 'profileImage'
+    'employeeId', 'isActive', 'profileImage'
   ];
 }
 
 
 // --- Validation function for Admin <--- NEW FUNCTION
 function validateAdminRow(normalizedRow, rowNumber) {
-  const errors = [];
-  const requiredKeys = [
-    'firstname', 'lastname', 'email', 'primaryphone',
-    'dateofbirth', 'gender', 'joiningdate',
-    'admintype', 'designation'
-  ];
-  requiredKeys.forEach(key => {
-    if (!normalizedRow.hasOwnProperty(key) || normalizedRow[key] === undefined || normalizedRow[key] === null || String(normalizedRow[key]).trim() === '') {
-      errors.push({ row: rowNumber, error: `is required`, field: key });
-    }
-  });
-  // Optional Field Validations...
-  if (normalizedRow['email'] && !/\S+@\S+\.\S+/.test(normalizedRow['email'])) { errors.push({ row: rowNumber, error: `Invalid format`, field: 'email' }); }
-  const pincode = normalizedRow['permanentpincode']; if (pincode && pincode.trim() !== '' && !/^\d{6}$/.test(pincode)) { errors.push({ row: rowNumber, error: `Invalid format (must be 6 digits if provided)`, field: 'permanentpincode' }); }
-  const currentPincode = normalizedRow['currentpincode']; if (currentPincode && currentPincode.trim() !== '' && !/^\d{6}$/.test(currentPincode)) { errors.push({ row: rowNumber, error: `Invalid format (must be 6 digits if provided)`, field: 'currentpincode' }); }
-  const gender = normalizedRow['gender']?.toLowerCase(); if (gender && gender.trim() !== '' && !['male', 'female', 'other'].includes(gender)) { errors.push({ row: rowNumber, error: `Invalid value (must be 'male', 'female', or 'other' if provided)`, field: 'gender' }); }
-  const phone = normalizedRow['primaryphone']; if (phone && phone.trim() !== '' && !/^\d{7,15}$/.test(phone.replace(/\D/g, ''))) { errors.push({ row: rowNumber, error: `Invalid format (must be 7-15 digits if provided)`, field: 'primaryphone' }); }
-  if (normalizedRow['dateofbirth']) { try { parseFlexibleDate(normalizedRow['dateofbirth'], 'Date of Birth'); } catch (e) { errors.push({ row: rowNumber, error: e.message, field: 'dateofbirth' }); } }
-  if (normalizedRow['joiningdate']) { try { parseFlexibleDate(normalizedRow['joiningdate'], 'Joining Date'); } catch (e) { errors.push({ row: rowNumber, error: e.message, field: 'joiningdate' }); } }
-  return errors;
-}
-
-
-// --- Validation function for Teacher ---
-function validateTeacherRow(normalizedRow, rowNumber) {
-  // (Keep this function exactly as it was in the previous 'role-aware' version)
-  const errors = [];
-  const requiredKeys = [
-    'firstname', 'lastname', 'email', 'primaryphone',
-    'dateofbirth', 'gender', 'joiningdate',
-    'highestqualification', 'totalexperience'
-  ];
-  requiredKeys.forEach(key => {
-    if (!normalizedRow.hasOwnProperty(key) || normalizedRow[key] === undefined || normalizedRow[key] === null || String(normalizedRow[key]).trim() === '') {
-      errors.push({ row: rowNumber, error: `is required`, field: key });
-    }
-  });
-  // Optional Field Validations... (email, pincode, gender, phone, dates, experience)
-  if (normalizedRow['email'] && !/\S+@\S+\.\S+/.test(normalizedRow['email'])) { errors.push({ row: rowNumber, error: `Invalid format`, field: 'email' }); }
-  const pincode = normalizedRow['permanentpincode']; if (pincode && pincode.trim() !== '' && !/^\d{6}$/.test(pincode)) { errors.push({ row: rowNumber, error: `Invalid format (must be 6 digits if provided)`, field: 'permanentpincode' }); }
-  const currentPincode = normalizedRow['currentpincode']; if (currentPincode && currentPincode.trim() !== '' && !/^\d{6}$/.test(currentPincode)) { errors.push({ row: rowNumber, error: `Invalid format (must be 6 digits if provided)`, field: 'currentpincode' }); }
-  const gender = normalizedRow['gender']?.toLowerCase(); if (gender && gender.trim() !== '' && !['male', 'female', 'other'].includes(gender)) { errors.push({ row: rowNumber, error: `Invalid value (must be 'male', 'female', or 'other' if provided)`, field: 'gender' }); }
-  const phone = normalizedRow['primaryphone']; if (phone && phone.trim() !== '' && !/^\d{7,15}$/.test(phone.replace(/\D/g, ''))) { errors.push({ row: rowNumber, error: `Invalid format (must be 7-15 digits if provided)`, field: 'primaryphone' }); }
-  if (normalizedRow['dateofbirth']) { try { parseFlexibleDate(normalizedRow['dateofbirth'], 'Date of Birth'); } catch (e) { errors.push({ row: rowNumber, error: e.message, field: 'dateofbirth' }); } }
-  if (normalizedRow['joiningdate']) { try { parseFlexibleDate(normalizedRow['joiningdate'], 'Joining Date'); } catch (e) { errors.push({ row: rowNumber, error: e.message, field: 'joiningdate' }); } }
-  const exp = normalizedRow['totalexperience']; if (exp && isNaN(Number(exp))) { errors.push({ row: rowNumber, error: `must be a number`, field: 'totalexperience' }); }
-  return errors;
-}
-
-// --- Helper to create Admin Data Object <--- NEW FUNCTION
-async function createAdminFromRow(normalizedRow, schoolIdAsObjectId, userId, schoolCode, creatingUserIdAsObjectId) {
-  const email = normalizedRow['email'];
-  const finalDateOfBirth = parseFlexibleDate(normalizedRow['dateofbirth'], 'Date of Birth'); if (!finalDateOfBirth) throw new Error('Date of Birth is required and could not be parsed.');
-  const finalJoiningDate = parseFlexibleDate(normalizedRow['joiningdate'], 'Joining Date'); if (!finalJoiningDate) throw new Error('Joining Date is required and could not be parsed.');
-  let temporaryPassword = generateRandomPassword(8); const hashedPassword = await bcrypt.hash(temporaryPassword, 10);
-  let gender = normalizedRow['gender']?.toLowerCase(); if (!['male', 'female', 'other'].includes(gender)) gender = 'other';
-  const isActiveValue = normalizedRow['isactive']?.toLowerCase(); let isActive = true; if (isActiveValue === 'false' || isActiveValue === 'inactive' || isActiveValue === 'no' || isActiveValue === '0') { isActive = false; }
-  const sameAsPermanent = normalizedRow['sameaspermanent']?.toLowerCase() !== 'false';
-  let permanentPincode = normalizedRow['permanentpincode'] || ''; if (permanentPincode && !/^\d{6}$/.test(permanentPincode)) permanentPincode = '';
-  let currentPincode = normalizedRow['currentpincode'] || ''; if (currentPincode && !/^\d{6}$/.test(currentPincode)) currentPincode = '';
-  const firstName = normalizedRow['firstname'] || ''; const lastName = normalizedRow['lastname'] || '';
-
-  // Handle profile image if provided <--- IMAGE UPLOAD
-  let profileImagePath = '';
-  if (normalizedRow['profileimage']) {
-    profileImagePath = await copyProfilePicture(normalizedRow['profileimage'], userId, schoolCode);
-    console.log(`🔍 DEBUG: Admin profile image path returned: ${profileImagePath}`);
-  }
-
-  const newAdmin = {
-    _id: new ObjectId(), userId, schoolCode: schoolCode.toUpperCase(), schoolId: schoolIdAsObjectId,
-    name: { firstName, middleName: normalizedRow['middlename'] || '', lastName, displayName: `${firstName} ${lastName}`.trim() },
-    email: email, password: hashedPassword, temporaryPassword: temporaryPassword, passwordChangeRequired: true, role: 'admin',
-    contact: { primaryPhone: normalizedRow['primaryphone'] || '', secondaryPhone: normalizedRow['secondaryphone'] || '', whatsappNumber: normalizedRow['whatsappnumber'] || '', },
-    address: {
-      permanent: { street: normalizedRow['permanentstreet'] || '', area: normalizedRow['permanentarea'] || '', city: normalizedRow['permanentcity'] || '', state: normalizedRow['permanentstate'] || '', country: normalizedRow['permanentcountry'] || 'India', pincode: permanentPincode, landmark: normalizedRow['permanentlandmark'] || '' },
-      current: sameAsPermanent ? undefined : { street: normalizedRow['currentstreet'] || '', area: normalizedRow['currentarea'] || '', city: normalizedRow['currentcity'] || '', state: normalizedRow['currentstate'] || '', country: normalizedRow['currentcountry'] || 'India', pincode: currentPincode, landmark: normalizedRow['currentlandmark'] || '' },
-      sameAsPermanent: sameAsPermanent
-    },
-    identity: { aadharNumber: normalizedRow['aadharnumber'] || '', panNumber: normalizedRow['pannumber'] || '' },
-    profileImage: profileImagePath,
-    isActive: isActive, createdAt: new Date(), updatedAt: new Date(),
-    schoolAccess: { joinedDate: finalJoiningDate, assignedBy: creatingUserIdAsObjectId, status: 'active', accessLevel: 'full' },
-    auditTrail: { createdBy: creatingUserIdAsObjectId, createdAt: new Date() },
-    adminDetails: {
-      employeeId: normalizedRow['employeeid']?.trim() || userId,
-      joiningDate: finalJoiningDate,
-      designation: normalizedRow['designation']?.trim() || '',
-      adminType: normalizedRow['admintype']?.trim() || 'admin',
-      department: normalizedRow['department']?.trim() || '',
-      permissions: {
-        userManagement: normalizedRow['permissions_usermanagement']?.toLowerCase() === 'true',
-        academicManagement: normalizedRow['permissions_academicmanagement']?.toLowerCase() === 'true',
-        feeManagement: normalizedRow['permissions_feemanagement']?.toLowerCase() === 'true',
-        reportGeneration: normalizedRow['permissions_reportgeneration']?.toLowerCase() === 'true',
-        systemSettings: normalizedRow['permissions_systemsettings']?.toLowerCase() === 'true',
-        schoolSettings: normalizedRow['permissions_schoolsettings']?.toLowerCase() === 'true',
-        dataExport: normalizedRow['permissions_dataexport']?.toLowerCase() === 'true',
-        auditLogs: normalizedRow['permissions_auditlogs']?.toLowerCase() === 'true'
-      },
-      bankDetails: {
-        accountNumber: normalizedRow['bankaccountno']?.trim() || '',
-        ifscCode: normalizedRow['bankifsc']?.trim() || '',
-        bankName: normalizedRow['bankname']?.trim() || '',
-        branchName: normalizedRow['bankbranchname']?.trim() || '',
-        accountHolderName: normalizedRow['accountholdername']?.trim() || `${firstName} ${lastName}`.trim()
-      }
-    }
-  };
-  return newAdmin;
-}
-
-
-// --- Helper to create Teacher Data Object ---
-async function createTeacherFromRow(normalizedRow, schoolIdAsObjectId, userId, schoolCode, creatingUserIdAsObjectId) {
-  // (Keep this function exactly as it was in the previous 'role-aware' version)
-  const email = normalizedRow['email'];
-  const finalDateOfBirth = parseFlexibleDate(normalizedRow['dateofbirth'], 'Date of Birth'); if (!finalDateOfBirth) throw new Error('Date of Birth is required and could not be parsed.');
-  const finalJoiningDate = parseFlexibleDate(normalizedRow['joiningdate'], 'Joining Date'); if (!finalJoiningDate) throw new Error('Joining Date is required and could not be parsed.');
-  let temporaryPassword = generateRandomPassword(8); const hashedPassword = await bcrypt.hash(temporaryPassword, 10);
-  let gender = normalizedRow['gender']?.toLowerCase(); if (!['male', 'female', 'other'].includes(gender)) gender = 'other';
-  const isActiveValue = normalizedRow['isactive']?.toLowerCase(); let isActive = true; if (isActiveValue === 'false' || isActiveValue === 'inactive' || isActiveValue === 'no' || isActiveValue === '0') { isActive = false; }
-  const sameAsPermanent = normalizedRow['sameaspermanent']?.toLowerCase() !== 'false';
-  let permanentPincode = normalizedRow['permanentpincode'] || ''; if (permanentPincode && !/^\d{6}$/.test(permanentPincode)) permanentPincode = '';
-  let currentPincode = normalizedRow['currentpincode'] || ''; if (currentPincode && !/^\d{6}$/.test(currentPincode)) currentPincode = '';
-  let totalExperience = parseInt(normalizedRow['totalexperience'] || '0'); if (isNaN(totalExperience) || totalExperience < 0) totalExperience = 0;
-  const firstName = normalizedRow['firstname'] || ''; const lastName = normalizedRow['lastname'] || '';
-
-  // Handle profile image if provided
-  let profileImagePath = '';
-  if (normalizedRow['profileimage']) {
-    profileImagePath = await copyProfilePicture(normalizedRow['profileimage'], userId, schoolCode);
-    console.log(`🔍 DEBUG: Teacher profile image path returned: ${profileImagePath}`);
-  }
-
-  const newTeacher = {
-    _id: new ObjectId(), userId, schoolCode: schoolCode.toUpperCase(), schoolId: schoolIdAsObjectId,
-    name: { firstName, middleName: normalizedRow['middlename'] || '', lastName, displayName: `${firstName} ${lastName}`.trim() },
-    email: email, password: hashedPassword, temporaryPassword: temporaryPassword, passwordChangeRequired: true, role: 'teacher',
-    contact: { primaryPhone: normalizedRow['primaryphone'] || '', secondaryPhone: normalizedRow['secondaryphone'] || '', whatsappNumber: normalizedRow['whatsappnumber'] || '', },
-    address: {
-      permanent: { street: normalizedRow['permanentstreet'] || '', area: normalizedRow['permanentarea'] || '', city: normalizedRow['permanentcity'] || '', state: normalizedRow['permanentstate'] || '', country: normalizedRow['permanentcountry'] || 'India', pincode: permanentPincode, landmark: normalizedRow['permanentlandmark'] || '' },
-      current: sameAsPermanent ? undefined : { street: normalizedRow['currentstreet'] || '', area: normalizedRow['currentarea'] || '', city: normalizedRow['currentcity'] || '', state: normalizedRow['currentstate'] || '', country: normalizedRow['currentcountry'] || 'India', pincode: currentPincode, landmark: normalizedRow['currentlandmark'] || '' },
-      sameAsPermanent: sameAsPermanent
-    },
-    identity: { aadharNumber: normalizedRow['aadharnumber'] || '', panNumber: normalizedRow['pannumber'] || '' },
-    profileImage: profileImagePath,
-    isActive: isActive, createdAt: new Date(), updatedAt: new Date(),
-    schoolAccess: { joinedDate: finalJoiningDate, assignedBy: creatingUserIdAsObjectId, status: 'active', accessLevel: 'full' },
-    auditTrail: { createdBy: creatingUserIdAsObjectId, createdAt: new Date() },
-    teacherDetails: {
-      employeeId: normalizedRow['employeeid']?.trim() || userId,
-      subjects: normalizedRow['subjects'] ? normalizedRow['subjects'].split(',').map(s => String(s).trim()).filter(Boolean) : [],
-      qualification: normalizedRow['highestqualification']?.trim() || '', experience: totalExperience, joiningDate: finalJoiningDate,
-      specialization: normalizedRow['specialization']?.trim() || '', previousExperience: '', dateOfBirth: finalDateOfBirth, gender: gender,
-      bloodGroup: normalizedRow['bloodgroup']?.trim() || '', nationality: normalizedRow['nationality']?.trim() || 'Indian', religion: normalizedRow['religion']?.trim() || '',
-      bankName: normalizedRow['bankname']?.trim() || '', bankAccountNo: normalizedRow['bankaccountno']?.trim() || '', bankIFSC: normalizedRow['bankifsc']?.trim() || '',
-      classTeacherOf: normalizedRow['classteacherof']?.trim() || '',
-    }
+{{ ... }
   };
   return newTeacher;
 }
@@ -940,20 +775,17 @@ async function createTeacherFromRow(normalizedRow, schoolIdAsObjectId, userId, s
 function getStudentHeadersRobust() {
   return [
     'studentId', 'firstName', 'middleName', 'lastName', 'email', 'primaryPhone', 'dateOfBirth', 'gender',
-    'permanentStreet', 'permanentArea', 'permanentCity', 'permanentState', 'permanentPincode', 'permanentCountry', 'permanentLandmark',
-    'sameAsPermanent', 'currentStreet', 'currentArea', 'currentCity', 'currentState', 'currentPincode', 'currentCountry', 'currentLandmark',
+    'permanentStreet', 'permanentCity', 'permanentState', 'permanentPincode',
     'isActive', 'admissionNumber', 'rollNumber', 'currentClass', 'currentSection', 'academicYear', 'admissionDate',
-    'fatherName', 'motherName', 'guardianName', 'fatherPhone', 'motherPhone', 'fatherEmail', 'motherEmail',
-    'aadharNumber', 'religion', 'caste', 'category', 'disability', 'isRTECandidate',
-    'previousSchoolName', 'previousBoard', 'lastClass', 'tcNumber',
-    'transportMode', 'busRoute', 'pickupPoint', 'feeCategory', 'concessionType', 'concessionPercentage',
-    'bankName', 'bankAccountNo', 'bankIFSC', 'medicalConditions', 'allergies', 'specialNeeds', 'profileImage'
+    'fatherName', 'motherName', 'fatherPhone', 'motherPhone',
+    'aadharNumber', 'religion', 'category', 'isRTECandidate', 'profileImage'
   ];
 }
 
 // --- Robust Validation (Student) ---
 function validateStudentRowRobust(normalizedRow, rowNumber) {
   const errors = [];
+{{ ... }
   const requiredKeys = ['firstname', 'lastname', 'email', 'primaryphone', 'dateofbirth', 'gender', 'currentclass', 'currentsection', 'fathername', 'mothername'];
   requiredKeys.forEach(key => { if (!normalizedRow.hasOwnProperty(key) || normalizedRow[key] === undefined || normalizedRow[key] === null || String(normalizedRow[key]).trim() === '') { errors.push({ row: rowNumber, error: `is required`, field: key }); } });
   // Optional Field Validations... (email, pincode, gender, phone, rte, dates, concession)
