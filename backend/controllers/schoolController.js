@@ -2464,7 +2464,20 @@ exports.deleteSchool = async (req, res) => {
       return res.status(500).json({ success: false, message: 'Failed to delete school from database' });
     }
 
+    // Final verification - count schools with this code
+    const finalCheck = await School.countDocuments({ code: school.code });
+    console.log(`[DELETE FINAL CHECK] Schools with code '${school.code}' after deletion: ${finalCheck}`);
+    
+    if (finalCheck > 0) {
+      console.error(`[DELETE FINAL CHECK ERROR] Found ${finalCheck} schools with code '${school.code}' after deletion!`);
+      return res.status(500).json({ 
+        success: false, 
+        message: `Deletion verification failed - ${finalCheck} school(s) with code '${school.code}' still exist in database` 
+      });
+    }
+    
     console.log(`[SCHOOL DELETED] ${school.name} (${school._id}) successfully deleted by ${req.user.email}`);
+    console.log(`[DELETE SUCCESS] Verified: No schools with code '${school.code}' exist in database`);
     
     res.json({ 
       success: true,
