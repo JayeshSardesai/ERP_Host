@@ -1782,9 +1782,13 @@ exports.updateSchool = async (req, res) => {
 
     console.log('🔄 UPDATE SCHOOL REQUEST RECEIVED');
     console.log('School ID:', schoolId);
-    console.log('Request body:', JSON.stringify(req.body, null, 2));
+    console.log('Request body keys:', Object.keys(req.body));
     console.log('Request file:', req.file);
     console.log('Request user:', req.user);
+    
+    // Remove fields that shouldn't be updated or cause issues
+    const fieldsToExclude = ['_id', '__v', 'createdAt', 'updatedAt', 'databaseCreated'];
+    fieldsToExclude.forEach(field => delete updateData[field]);
 
     // Check if user has permission to update
     if (!req.user) {
@@ -1858,6 +1862,26 @@ exports.updateSchool = async (req, res) => {
         delete updateData.students;
       }
     }
+    
+    // Remove or parse complex fields that cause issues with FormData
+    // These fields should not be updated via the edit form
+    const complexFields = ['customGradeNames', 'gradeLevels', 'classes', 'sections'];
+    complexFields.forEach(field => {
+      if (updateData[field] && typeof updateData[field] === 'string') {
+        // If it's a string like '[object Object]', remove it
+        if (updateData[field].includes('[object Object]')) {
+          delete updateData[field];
+        } else {
+          // Try to parse it
+          try {
+            updateData[field] = JSON.parse(updateData[field]);
+          } catch (e) {
+            console.error(`Error parsing ${field}:`, e);
+            delete updateData[field];
+          }
+        }
+      }
+    });
 
     // Handle logo upload with Sharp compression if file is present
     if (req.file) {
