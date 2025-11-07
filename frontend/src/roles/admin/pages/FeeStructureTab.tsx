@@ -194,8 +194,8 @@ const FeeStructureTab: React.FC = () => {
   };
 
   return (
-    <div className="space-y-4 sm:space-y-6">
-      <div className="bg-white rounded-lg shadow p-4 sm:p-6">
+    <div className="space-y-4 sm:space-y-6 max-w-full overflow-x-hidden">
+      <div className="bg-white rounded-lg shadow p-4 sm:p-6 overflow-hidden">
         <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4 sm:mb-6">Create Fee Structure</h2>
 
         {/* Alerts */}

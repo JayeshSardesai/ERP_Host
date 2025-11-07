@@ -159,7 +159,6 @@ export function AccountDetails() {
                 <h3 className="text-sm font-medium text-blue-900 mb-2">Account Status</h3>
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-blue-800">Active for fee collection</span>
-                  <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">Verified</span>
                 </div>
               </div>
             )}

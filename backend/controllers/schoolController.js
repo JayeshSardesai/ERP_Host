@@ -1487,7 +1487,8 @@ exports.getAllSchools = async (req, res) => {
     }
 
     const schools = await School.find({})
-      .select('-__v');
+      .select('-__v')
+      .lean(); // Use lean() to avoid Mongoose document hydration issues
 
     // Map all fields needed for frontend
     const mappedSchools = schools.map(school => ({
@@ -1791,35 +1792,80 @@ exports.updateSchool = async (req, res) => {
     }
 
     // Parse JSON fields if they come as strings (from FormData)
-    if (typeof updateData.address === 'string') {
-      try {
-        updateData.address = JSON.parse(updateData.address);
-      } catch (e) {
-        console.error('Error parsing address:', e);
+    const parseField = (fieldName) => {
+      if (updateData[fieldName] === undefined || updateData[fieldName] === null) return;
+      
+      if (typeof updateData[fieldName] === 'string') {
+        // Skip if it's just [object Object]
+        if (updateData[fieldName].trim() === '[object Object]') {
+          console.log(`Skipping ${fieldName} as it's an [object Object] string`);
+          delete updateData[fieldName];
+          return;
+        }
+        
+        try {
+          updateData[fieldName] = JSON.parse(updateData[fieldName]);
+        } catch (e) {
+          console.error(`Error parsing ${fieldName}:`, e);
+          // If parsing fails, remove the field to prevent schema validation errors
+          delete updateData[fieldName];
+        }
+      } else if (typeof updateData[fieldName] === 'object' && 
+                Object.prototype.toString.call(updateData[fieldName]) === '[object Object]' && 
+                Object.keys(updateData[fieldName]).length === 0) {
+        // Handle empty objects
+        delete updateData[fieldName];
       }
+    };
+    
+    // Parse all possible object fields
+    ['address', 'contact', 'bankDetails', 'accessMatrix', 
+     'academicSettings', 'settings', 'features', 'stats'].forEach(field => {
+      parseField(field);
+    });
+    
+    // Special handling for boolean fields that might come as strings
+    if (updateData.isActive !== undefined) {
+      updateData.isActive = String(updateData.isActive).toLowerCase() === 'true';
     }
     
-    if (typeof updateData.contact === 'string') {
-      try {
-        updateData.contact = JSON.parse(updateData.contact);
-      } catch (e) {
-        console.error('Error parsing contact:', e);
-      }
+    if (updateData.databaseCreated !== undefined) {
+      updateData.databaseCreated = String(updateData.databaseCreated).toLowerCase() === 'true';
     }
-    
-    if (typeof updateData.bankDetails === 'string') {
-      try {
-        updateData.bankDetails = JSON.parse(updateData.bankDetails);
-      } catch (e) {
-        console.error('Error parsing bankDetails:', e);
-      }
-    }
-    
-    if (typeof updateData.accessMatrix === 'string') {
-      try {
-        updateData.accessMatrix = JSON.parse(updateData.accessMatrix);
-      } catch (e) {
-        console.error('Error parsing accessMatrix:', e);
+
+    // Handle array fields that come as strings from FormData
+    if (updateData.admins !== undefined) {
+      console.log('Processing admins field:', typeof updateData.admins, updateData.admins);
+      
+      if (typeof updateData.admins === 'string') {
+        try {
+          const parsed = JSON.parse(updateData.admins);
+          console.log('Parsed admins:', parsed);
+          // Filter out empty strings and invalid ObjectIds
+          const filtered = Array.isArray(parsed) ? parsed.filter(id => id && String(id).trim() !== '') : [];
+          console.log('Filtered admins:', filtered);
+          // Only set if there are valid values, otherwise remove the field
+          if (filtered.length > 0) {
+            updateData.admins = filtered;
+          } else {
+            console.log('Removing empty admins field');
+            delete updateData.admins;
+          }
+        } catch (e) {
+          console.error('Error parsing admins:', e);
+          // If parsing fails, remove the field to avoid casting errors
+          delete updateData.admins;
+        }
+      } else if (Array.isArray(updateData.admins)) {
+        // Filter out empty strings if it's already an array
+        const filtered = updateData.admins.filter(id => id && String(id).trim() !== '');
+        console.log('Filtered array admins:', filtered);
+        if (filtered.length > 0) {
+          updateData.admins = filtered;
+        } else {
+          console.log('Removing empty admins array');
+          delete updateData.admins;
+        }
       }
     }
 
@@ -1828,10 +1874,13 @@ exports.updateSchool = async (req, res) => {
       let tempCompressedPath = null;
       
       try {
-        console.log(`Updating logo: ${req.file.originalname}, Size: ${(req.file.size / 1024).toFixed(2)}KB`);
+        console.log(`🖼️ Processing logo upload: ${req.file.originalname}, Size: ${(req.file.size / 1024).toFixed(2)}KB`);
         
         // Get existing school to get code for filename
         const existingSchool = await School.findById(schoolId);
+        if (!existingSchool) {
+          throw new Error('School not found');
+        }
 
         // Create temp directory for compression
         const tempDir = path.join(__dirname, '..', 'uploads', 'temp');
@@ -1839,50 +1888,69 @@ exports.updateSchool = async (req, res) => {
           fs.mkdirSync(tempDir, { recursive: true });
         }
 
-        // Generate unique filename with .jpg extension
+        // Generate unique filename with proper extension
         const timestamp = Date.now();
-        const filename = `${existingSchool.code}_${timestamp}.jpg`;
+        const fileExt = path.extname(req.file.originalname).toLowerCase() || '.jpg';
+        const filename = `${existingSchool.code}_${timestamp}${fileExt}`;
         tempCompressedPath = path.join(tempDir, filename);
 
-        // Compress logo using Sharp to ~30KB
-        console.log('Compressing logo with Sharp...');
+        // Process image with Sharp
+        console.log('🔄 Processing image with Sharp...');
         const sharpInstance = sharp(req.file.path);
-        await sharpInstance
-          .resize(800, 800, { fit: 'inside', withoutEnlargement: true })
-          .jpeg({ quality: 60 })
-          .toFile(tempCompressedPath);
+        
+        // Get image metadata to preserve transparency for PNGs
+        const metadata = await sharpInstance.metadata();
+        const isPng = metadata.format === 'png';
+        
+        // Process image with appropriate settings
+        const processImage = sharpInstance
+          .resize(800, 800, { 
+            fit: 'inside', 
+            withoutEnlargement: true 
+          });
+          
+        // Apply format-specific settings
+        if (isPng) {
+          await processImage.png({ quality: 80 }).toFile(tempCompressedPath);
+        } else {
+          await processImage.jpeg({ quality: 80, mozjpeg: true }).toFile(tempCompressedPath);
+        }
         
         // Release Sharp resources
         sharpInstance.destroy();
         
-        // Check file size and re-compress if needed
+        // Check file size
         let stats = fs.statSync(tempCompressedPath);
-        let quality = 60;
-        
-        while (stats.size > 30 * 1024 && quality > 20) {
-          quality -= 10;
-          console.log(`Re-compressing with quality ${quality}...`);
-          const recompressInstance = sharp(req.file.path);
-          await recompressInstance
-            .resize(800, 800, { fit: 'inside', withoutEnlargement: true })
-            .jpeg({ quality })
-            .toFile(tempCompressedPath);
-          recompressInstance.destroy();
-          stats = fs.statSync(tempCompressedPath);
-        }
-        
-        console.log(`Compressed logo: ${(stats.size / 1024).toFixed(2)}KB (quality: ${quality})`);
+        console.log(`✅ Processed logo: ${(stats.size / 1024).toFixed(2)}KB (${isPng ? 'PNG' : 'JPEG'})`);
         
         // Upload to Cloudinary
-        const cloudinaryFolder = `logos`;
+        const cloudinaryFolder = `schools/${existingSchool._id}/logos`;
         const publicId = `${existingSchool.code}_${timestamp}`;
+        
+        console.log(`☁️ Uploading to Cloudinary folder: ${cloudinaryFolder}`);
         const uploadResult = await uploadToCloudinary(tempCompressedPath, cloudinaryFolder, publicId);
         
-        updateData.logoUrl = uploadResult.secure_url;
-        console.log('Logo uploaded to Cloudinary:', uploadResult.secure_url);
+        if (!uploadResult || !uploadResult.secure_url) {
+          throw new Error('Failed to upload logo to Cloudinary');
+        }
         
-        // Extract old logo public ID for deletion
-        const oldLogoPublicId = existingSchool.logoUrl ? extractPublicId(existingSchool.logoUrl) : null;
+        // Set the new logo URL
+        updateData.logoUrl = uploadResult.secure_url;
+        console.log('✅ Logo uploaded to Cloudinary:', uploadResult.secure_url);
+        
+        // If there was a previous logo, delete it from Cloudinary
+        if (existingSchool.logoUrl) {
+          const oldLogoPublicId = extractPublicId(existingSchool.logoUrl);
+          if (oldLogoPublicId) {
+            try {
+              console.log(`🗑️ Deleting old logo: ${oldLogoPublicId}`);
+              await deleteFromCloudinary(oldLogoPublicId);
+            } catch (deleteError) {
+              console.error('⚠️ Could not delete old logo:', deleteError.message);
+              // Don't fail the whole operation if deletion fails
+            }
+          }
+        }
         
         // Delete temp files
         deleteLocalFile(req.file.path);
@@ -1920,6 +1988,44 @@ exports.updateSchool = async (req, res) => {
 
     console.log('💾 School updated with logoUrl:', school.logoUrl);
 
+    // Ensure the logo URL is consistent in the response
+    const responseSchool = school.toObject();
+    
+    // Function to get the latest version of a Cloudinary URL
+    const getLatestLogoUrl = (url) => {
+      if (!url) return '';
+      
+      // If it's an object, extract the URL
+      if (typeof url === 'object') {
+        url = url.secure_url || url.url || '';
+      }
+      
+      // If it's a Cloudinary URL, ensure we have the latest version
+      if (url.includes('res.cloudinary.com')) {
+        // Remove any existing version parameter
+        url = url.replace(/\/v\d+\//, '/v' + Math.floor(Date.now() / 1000) + '/');
+        // Add a cache-busting parameter
+        url += (url.includes('?') ? '&' : '?') + 't=' + Date.now();
+      }
+      
+      return url;
+    };
+    
+    // Process logo URLs to ensure they're fresh
+    if (responseSchool.logoUrl) {
+      responseSchool.logoUrl = getLatestLogoUrl(responseSchool.logoUrl);
+    }
+    if (responseSchool.logo) {
+      responseSchool.logo = getLatestLogoUrl(responseSchool.logo);
+    }
+    
+    // Ensure both logo and logoUrl are consistent
+    if (responseSchool.logoUrl && !responseSchool.logo) {
+      responseSchool.logo = responseSchool.logoUrl;
+    } else if (responseSchool.logo && !responseSchool.logoUrl) {
+      responseSchool.logoUrl = responseSchool.logo;
+    }
+
     // Sync updated school information to its dedicated database
     if (school.databaseCreated) {
       try {
@@ -1931,7 +2037,11 @@ exports.updateSchool = async (req, res) => {
       }
     }
 
-    res.json({ message: 'School updated successfully', school });
+    // Send the properly formatted response with consistent logo URLs
+    res.json({ 
+      message: 'School updated successfully', 
+      school: responseSchool 
+    });
   } catch (error) {
     console.error('Error updating school:', error);
     res.status(500).json({ message: 'Error updating school', error: error.message });

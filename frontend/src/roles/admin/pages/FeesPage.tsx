@@ -34,7 +34,7 @@ const FeesPage: React.FC = () => {
   ];
 
   return (
-    <div className="space-y-4 sm:space-y-6 p-4 sm:p-6">
+    <div className="space-y-4 sm:space-y-6 p-4 sm:p-6 max-w-full overflow-x-hidden">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center space-x-2 sm:space-x-3">
@@ -44,9 +44,9 @@ const FeesPage: React.FC = () => {
       </div>
 
       {/* Tab Navigation */}
-      <div className="bg-white rounded-lg shadow">
+      <div className="bg-white rounded-lg shadow overflow-hidden">
         <div className="border-b border-gray-200">
-          <nav className="-mb-px flex flex-col sm:flex-row sm:space-x-8 px-4 sm:px-6">
+          <nav className="-mb-px flex flex-col sm:flex-row sm:space-x-8 px-4 sm:px-6 overflow-x-auto">
             {tabs.map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;

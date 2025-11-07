@@ -1,7 +1,7 @@
 // NOTE: This file contained duplicate implementations. Keeping the full editor implementation below.
 
 import React, { useEffect, useState } from 'react';
-import { ArrowLeft, Save, X, MapPin, Phone, Settings as SettingsIcon, Building } from 'lucide-react';
+import { ArrowLeft, Save, X, MapPin, Phone, Settings as SettingsIcon, Building, Upload, Image as ImageIcon } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import api from '../../../api/axios';
 import LocationSelector from '../../../components/LocationSelector';
@@ -13,6 +13,8 @@ const SchoolEditDetails: React.FC = () => {
   const [form, setForm] = useState<any>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
 
   console.log('[SchoolEditDetails] Component rendered, selectedSchoolId:', selectedSchoolId);
 
@@ -122,12 +124,70 @@ const SchoolEditDetails: React.FC = () => {
     update('address.taluka', text);
   };
 
+  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Validate file type
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+      if (!allowedTypes.includes(file.type)) {
+        setError('Only image files (JPEG, PNG, GIF, WebP) are allowed');
+        return;
+      }
+      
+      // Validate file size (10MB max)
+      if (file.size > 10 * 1024 * 1024) {
+        setError('File size must be less than 10MB');
+        return;
+      }
+      
+      setLogoFile(file);
+      
+      // Create preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setLogoPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+      setError(null);
+    }
+  };
+
+  const handleRemoveLogo = () => {
+    setLogoFile(null);
+    setLogoPreview(null);
+  };
+
   const handleSave = async () => {
     if (!selectedSchoolId) return;
     setLoading(true);
     setError(null);
     try {
-      const res = await api.put(`/schools/${selectedSchoolId}`, form);
+      // Create FormData for file upload
+      const formData = new FormData();
+      
+      // Add all form fields
+      Object.keys(form).forEach(key => {
+        const value = form[key];
+        if (value !== null && value !== undefined) {
+          // Stringify objects
+          if (typeof value === 'object' && !Array.isArray(value)) {
+            formData.append(key, JSON.stringify(value));
+          } else {
+            formData.append(key, String(value));
+          }
+        }
+      });
+      
+      // Add logo file if selected
+      if (logoFile) {
+        formData.append('logo', logoFile);
+      }
+      
+      const res = await api.put(`/schools/${selectedSchoolId}`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
       const updated = (res.data as any)?.school || res.data;
       setProfile(updated);
       await updateSchool({
@@ -150,10 +210,10 @@ const SchoolEditDetails: React.FC = () => {
         website: updated.contact?.website || '',
         secondaryContact: updated.secondaryContact || ''
       } as any);
-      alert('School updated');
+      alert('School updated successfully');
       setCurrentView('school-details');
     } catch (e: any) {
-      setError(e?.message || 'Failed to save');
+      setError(e?.response?.data?.message || e?.message || 'Failed to save');
     } finally {
       setLoading(false);
     }
@@ -215,6 +275,69 @@ const SchoolEditDetails: React.FC = () => {
       {error && <div className="mb-6 bg-red-50 border border-red-200 text-red-800 rounded p-4">{error}</div>}
 
       <div className="space-y-6">
+        {/* Logo Upload Section */}
+        <div className="bg-white rounded-xl border border-gray-200 p-6">
+          <div className="flex items-center space-x-3 mb-6">
+            <ImageIcon className="h-6 w-6 text-blue-600" />
+            <h2 className="text-lg font-semibold text-gray-900">School Logo</h2>
+          </div>
+          <div className="flex flex-col md:flex-row gap-6 items-start">
+            {/* Current/Preview Logo */}
+            <div className="flex-shrink-0">
+              <div className="w-32 h-32 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center bg-gray-50 overflow-hidden">
+                {logoPreview ? (
+                  <img src={logoPreview} alt="Logo preview" className="w-full h-full object-contain" />
+                ) : profile?.logoUrl ? (
+                  <img src={profile.logoUrl} alt="Current logo" className="w-full h-full object-contain" />
+                ) : (
+                  <ImageIcon className="h-12 w-12 text-gray-400" />
+                )}
+              </div>
+              {(logoPreview || profile?.logoUrl) && (
+                <p className="text-xs text-gray-500 mt-2 text-center">
+                  {logoPreview ? 'New logo' : 'Current logo'}
+                </p>
+              )}
+            </div>
+            
+            {/* Upload Controls */}
+            <div className="flex-1">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Upload New Logo
+              </label>
+              <p className="text-sm text-gray-500 mb-3">
+                Supported formats: JPEG, PNG, GIF, WebP (Max 10MB). Logo will be compressed to ~30KB.
+              </p>
+              <div className="flex gap-2">
+                <label className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer">
+                  <Upload className="h-4 w-4" />
+                  <span>Choose File</span>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                    onChange={handleLogoChange}
+                    className="hidden"
+                  />
+                </label>
+                {logoPreview && (
+                  <button
+                    onClick={handleRemoveLogo}
+                    className="flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                  >
+                    <X className="h-4 w-4" />
+                    <span>Remove</span>
+                  </button>
+                )}
+              </div>
+              {logoFile && (
+                <p className="text-sm text-green-600 mt-2">
+                  ✓ Selected: {logoFile.name} ({(logoFile.size / 1024).toFixed(2)} KB)
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <div className="flex items-center space-x-3 mb-6">
             <Building className="h-6 w-6 text-indigo-600" />
