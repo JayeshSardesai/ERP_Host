@@ -1487,7 +1487,8 @@ exports.getAllSchools = async (req, res) => {
     }
 
     const schools = await School.find({})
-      .select('-__v');
+      .select('-__v')
+      .lean(); // Use lean() to avoid Mongoose document hydration issues
 
     // Map all fields needed for frontend
     const mappedSchools = schools.map(school => ({
