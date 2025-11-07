@@ -25,16 +25,17 @@ app.use(cors({
   origin: function (origin, callback) {
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
-    
+
     const allowedOrigins = [
-      'http://localhost:3000', 
-      'https://erp-host-1.web.app', 
+      'http://localhost:3000',
+      'https://erp-host-1.web.app',
       'https://erp-host-1.firebaseapp.com',
       'https://erpedulogix.web.app',
       'https://erpedulogix.firebaseapp.com',
-      'https://erp-backend-1jtx.onrender.com' // Add the production backend URL
+      'https://erp-backend-1jtx.onrender.com',
+      'http://localhost:8081/'// Add the production backend URL
     ];
-    
+
     if (allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
@@ -58,9 +59,9 @@ const upload = multer({ storage: storage });
 // Request logging middleware - only log non-health/info endpoints
 app.use((req, res, next) => {
   // Skip logging for health checks and frequent polling endpoints
-  if (!req.originalUrl.includes('/health') && 
-      !req.originalUrl.includes('/school-info') &&
-      !req.originalUrl.includes('/stats')) {
+  if (!req.originalUrl.includes('/health') &&
+    !req.originalUrl.includes('/school-info') &&
+    !req.originalUrl.includes('/stats')) {
     console.log(`📝 ${req.method} ${req.originalUrl}`);
   }
   next();
@@ -428,7 +429,7 @@ app.use('*', (req, res, next) => {
 // Global error handler - MUST come after 404 handler
 app.use((err, req, res, next) => {
   console.error('❌ Unhandled error:', err);
-  
+
   // CORS error handling
   if (err.message && err.message.includes('CORS')) {
     return res.status(403).json({
@@ -437,7 +438,7 @@ app.use((err, req, res, next) => {
       error: 'Origin not allowed'
     });
   }
-  
+
   // Always return JSON, never HTML
   res.status(err.status || 500).json({
     success: false,
