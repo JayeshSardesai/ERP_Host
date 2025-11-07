@@ -90,7 +90,7 @@ router.get('/:schoolId', setSchoolContext, validateSchoolAccess(['admin', 'super
 router.get('/:schoolId/info', authMiddleware.auth, schoolController.getSchoolInfo);
 // Get school info from school_info collection in school's database
 router.get('/database/school-info', authMiddleware.auth, schoolController.getSchoolInfoFromDatabase);
-router.put('/:schoolId', authMiddleware.auth, logoUpload.single('logo'), schoolController.updateSchool);
+router.put('/:schoolId', schoolController.updateSchool);
 router.patch('/:schoolId/access-matrix', setMainDbContext, requireSuperAdmin, schoolController.updateAccessMatrix);
 router.delete('/:schoolId', setMainDbContext, requireSuperAdmin, schoolController.deleteSchool);
 // Update only bank details

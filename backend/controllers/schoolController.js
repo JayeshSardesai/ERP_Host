@@ -1782,22 +1782,11 @@ exports.updateSchool = async (req, res) => {
 
     console.log('🔄 UPDATE SCHOOL REQUEST RECEIVED');
     console.log('School ID:', schoolId);
-    console.log('Request body keys:', Object.keys(req.body));
+    console.log('Request body:', JSON.stringify(req.body, null, 2));
     console.log('Request file:', req.file);
-    console.log('Request user:', req.user);
-    
-    // Remove fields that shouldn't be updated or cause issues
-    const fieldsToExclude = ['_id', '__v', 'createdAt', 'updatedAt', 'databaseCreated'];
-    fieldsToExclude.forEach(field => delete updateData[field]);
 
     // Check if user has permission to update
-    if (!req.user) {
-      console.error('❌ No user found in request - authentication failed');
-      return res.status(401).json({ message: 'Authentication required' });
-    }
-    
     if (req.user.role !== 'superadmin' && req.user.schoolId?.toString() !== schoolId) {
-      console.error('❌ Access denied for user:', req.user.userId, 'role:', req.user.role);
       return res.status(403).json({ message: 'Access denied' });
     }
 
@@ -1833,55 +1822,6 @@ exports.updateSchool = async (req, res) => {
         console.error('Error parsing accessMatrix:', e);
       }
     }
-    
-    // Parse array fields that come as strings from FormData
-    if (typeof updateData.admins === 'string') {
-      try {
-        updateData.admins = JSON.parse(updateData.admins);
-      } catch (e) {
-        console.error('Error parsing admins:', e);
-        // If parsing fails, remove the field to avoid cast errors
-        delete updateData.admins;
-      }
-    }
-    
-    if (typeof updateData.teachers === 'string') {
-      try {
-        updateData.teachers = JSON.parse(updateData.teachers);
-      } catch (e) {
-        console.error('Error parsing teachers:', e);
-        delete updateData.teachers;
-      }
-    }
-    
-    if (typeof updateData.students === 'string') {
-      try {
-        updateData.students = JSON.parse(updateData.students);
-      } catch (e) {
-        console.error('Error parsing students:', e);
-        delete updateData.students;
-      }
-    }
-    
-    // Remove or parse complex fields that cause issues with FormData
-    // These fields should not be updated via the edit form
-    const complexFields = ['customGradeNames', 'gradeLevels', 'classes', 'sections'];
-    complexFields.forEach(field => {
-      if (updateData[field] && typeof updateData[field] === 'string') {
-        // If it's a string like '[object Object]', remove it
-        if (updateData[field].includes('[object Object]')) {
-          delete updateData[field];
-        } else {
-          // Try to parse it
-          try {
-            updateData[field] = JSON.parse(updateData[field]);
-          } catch (e) {
-            console.error(`Error parsing ${field}:`, e);
-            delete updateData[field];
-          }
-        }
-      }
-    });
 
     // Handle logo upload with Sharp compression if file is present
     if (req.file) {
@@ -1959,15 +1899,12 @@ exports.updateSchool = async (req, res) => {
         }
         
       } catch (error) {
-        console.error('❌ Error handling logo upload:', error);
-        console.error('❌ Logo upload error stack:', error.stack);
+        console.error('Error handling logo upload:', error);
         // Clean up temp files on error
         deleteLocalFile(req.file.path);
         if (tempCompressedPath) {
           deleteLocalFile(tempCompressedPath);
         }
-        // Re-throw the error to stop the update process
-        throw new Error(`Logo upload failed: ${error.message}`);
       }
     }
 
@@ -1996,13 +1933,8 @@ exports.updateSchool = async (req, res) => {
 
     res.json({ message: 'School updated successfully', school });
   } catch (error) {
-    console.error('❌ Error updating school:', error);
-    console.error('❌ Error stack:', error.stack);
-    res.status(500).json({ 
-      message: 'Error updating school', 
-      error: error.message,
-      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
-    });
+    console.error('Error updating school:', error);
+    res.status(500).json({ message: 'Error updating school', error: error.message });
   }
 };
 
