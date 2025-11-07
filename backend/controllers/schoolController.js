@@ -1988,6 +1988,22 @@ exports.updateSchool = async (req, res) => {
 
     console.log('💾 School updated with logoUrl:', school.logoUrl);
 
+    // Ensure the logo URL is consistent in the response
+    const responseSchool = school.toObject();
+    
+    // If logoUrl exists, ensure it's a string and not an object
+    if (responseSchool.logoUrl && typeof responseSchool.logoUrl === 'object') {
+      responseSchool.logoUrl = responseSchool.logoUrl.secure_url || responseSchool.logoUrl.url || '';
+    }
+    
+    // Ensure the logo field is consistent with logoUrl
+    if (responseSchool.logoUrl && !responseSchool.logo) {
+      responseSchool.logo = responseSchool.logoUrl;
+    } else if (responseSchool.logo && typeof responseSchool.logo === 'object') {
+      responseSchool.logo = responseSchool.logo.secure_url || responseSchool.logo.url || '';
+      responseSchool.logoUrl = responseSchool.logo;
+    }
+
     // Sync updated school information to its dedicated database
     if (school.databaseCreated) {
       try {
@@ -1999,7 +2015,11 @@ exports.updateSchool = async (req, res) => {
       }
     }
 
-    res.json({ message: 'School updated successfully', school });
+    // Send the properly formatted response with consistent logo URLs
+    res.json({ 
+      message: 'School updated successfully', 
+      school: responseSchool 
+    });
   } catch (error) {
     console.error('Error updating school:', error);
     res.status(500).json({ message: 'Error updating school', error: error.message });
