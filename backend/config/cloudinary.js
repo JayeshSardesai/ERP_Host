@@ -22,7 +22,14 @@ const uploadToCloudinary = async (filePath, folder, publicId) => {
     console.log(`☁️ Uploading to Cloudinary: ${filePath}`);
     console.log(`📁 Folder: ${folder}, Public ID: ${publicId}`);
 
-    const result = await cloudinary.uploader.upload(filePath, {
+    if (!fs.existsSync(filePath)) {
+      throw new Error(`File not found: ${filePath}`);
+    }
+
+    // For logos, we want to maintain transparency for PNGs
+    const isPng = filePath.toLowerCase().endsWith('.png');
+    
+    const uploadOptions = {
       folder: folder,
       public_id: publicId,
       resource_type: 'image',
@@ -30,9 +37,17 @@ const uploadToCloudinary = async (filePath, folder, publicId) => {
       transformation: [
         { width: 800, height: 800, crop: 'limit' },
         { quality: 'auto:good' },
-        { fetch_format: 'auto' }
+        { fetch_format: isPng ? 'png' : 'auto' },
+        ...(isPng ? [{ flags: 'lossy' }] : []) // Only apply lossy for PNGs
       ]
-    });
+    };
+
+    console.log('Upload options:', JSON.stringify(uploadOptions, null, 2));
+    const result = await cloudinary.uploader.upload(filePath, uploadOptions);
+
+    if (!result.secure_url) {
+      throw new Error('No secure_url in Cloudinary response');
+    }
 
     console.log(`✅ Uploaded to Cloudinary: ${result.secure_url}`);
     return result;

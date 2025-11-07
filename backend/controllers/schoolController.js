@@ -1874,10 +1874,13 @@ exports.updateSchool = async (req, res) => {
       let tempCompressedPath = null;
       
       try {
-        console.log(`Updating logo: ${req.file.originalname}, Size: ${(req.file.size / 1024).toFixed(2)}KB`);
+        console.log(`🖼️ Processing logo upload: ${req.file.originalname}, Size: ${(req.file.size / 1024).toFixed(2)}KB`);
         
         // Get existing school to get code for filename
         const existingSchool = await School.findById(schoolId);
+        if (!existingSchool) {
+          throw new Error('School not found');
+        }
 
         // Create temp directory for compression
         const tempDir = path.join(__dirname, '..', 'uploads', 'temp');
@@ -1885,50 +1888,69 @@ exports.updateSchool = async (req, res) => {
           fs.mkdirSync(tempDir, { recursive: true });
         }
 
-        // Generate unique filename with .jpg extension
+        // Generate unique filename with proper extension
         const timestamp = Date.now();
-        const filename = `${existingSchool.code}_${timestamp}.jpg`;
+        const fileExt = path.extname(req.file.originalname).toLowerCase() || '.jpg';
+        const filename = `${existingSchool.code}_${timestamp}${fileExt}`;
         tempCompressedPath = path.join(tempDir, filename);
 
-        // Compress logo using Sharp to ~30KB
-        console.log('Compressing logo with Sharp...');
+        // Process image with Sharp
+        console.log('🔄 Processing image with Sharp...');
         const sharpInstance = sharp(req.file.path);
-        await sharpInstance
-          .resize(800, 800, { fit: 'inside', withoutEnlargement: true })
-          .jpeg({ quality: 60 })
-          .toFile(tempCompressedPath);
+        
+        // Get image metadata to preserve transparency for PNGs
+        const metadata = await sharpInstance.metadata();
+        const isPng = metadata.format === 'png';
+        
+        // Process image with appropriate settings
+        const processImage = sharpInstance
+          .resize(800, 800, { 
+            fit: 'inside', 
+            withoutEnlargement: true 
+          });
+          
+        // Apply format-specific settings
+        if (isPng) {
+          await processImage.png({ quality: 80 }).toFile(tempCompressedPath);
+        } else {
+          await processImage.jpeg({ quality: 80, mozjpeg: true }).toFile(tempCompressedPath);
+        }
         
         // Release Sharp resources
         sharpInstance.destroy();
         
-        // Check file size and re-compress if needed
+        // Check file size
         let stats = fs.statSync(tempCompressedPath);
-        let quality = 60;
-        
-        while (stats.size > 30 * 1024 && quality > 20) {
-          quality -= 10;
-          console.log(`Re-compressing with quality ${quality}...`);
-          const recompressInstance = sharp(req.file.path);
-          await recompressInstance
-            .resize(800, 800, { fit: 'inside', withoutEnlargement: true })
-            .jpeg({ quality })
-            .toFile(tempCompressedPath);
-          recompressInstance.destroy();
-          stats = fs.statSync(tempCompressedPath);
-        }
-        
-        console.log(`Compressed logo: ${(stats.size / 1024).toFixed(2)}KB (quality: ${quality})`);
+        console.log(`✅ Processed logo: ${(stats.size / 1024).toFixed(2)}KB (${isPng ? 'PNG' : 'JPEG'})`);
         
         // Upload to Cloudinary
-        const cloudinaryFolder = `logos`;
+        const cloudinaryFolder = `schools/${existingSchool._id}/logos`;
         const publicId = `${existingSchool.code}_${timestamp}`;
+        
+        console.log(`☁️ Uploading to Cloudinary folder: ${cloudinaryFolder}`);
         const uploadResult = await uploadToCloudinary(tempCompressedPath, cloudinaryFolder, publicId);
         
-        updateData.logoUrl = uploadResult.secure_url;
-        console.log('Logo uploaded to Cloudinary:', uploadResult.secure_url);
+        if (!uploadResult || !uploadResult.secure_url) {
+          throw new Error('Failed to upload logo to Cloudinary');
+        }
         
-        // Extract old logo public ID for deletion
-        const oldLogoPublicId = existingSchool.logoUrl ? extractPublicId(existingSchool.logoUrl) : null;
+        // Set the new logo URL
+        updateData.logoUrl = uploadResult.secure_url;
+        console.log('✅ Logo uploaded to Cloudinary:', uploadResult.secure_url);
+        
+        // If there was a previous logo, delete it from Cloudinary
+        if (existingSchool.logoUrl) {
+          const oldLogoPublicId = extractPublicId(existingSchool.logoUrl);
+          if (oldLogoPublicId) {
+            try {
+              console.log(`🗑️ Deleting old logo: ${oldLogoPublicId}`);
+              await deleteFromCloudinary(oldLogoPublicId);
+            } catch (deleteError) {
+              console.error('⚠️ Could not delete old logo:', deleteError.message);
+              // Don't fail the whole operation if deletion fails
+            }
+          }
+        }
         
         // Delete temp files
         deleteLocalFile(req.file.path);
