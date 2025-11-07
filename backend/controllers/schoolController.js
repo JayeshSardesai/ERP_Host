@@ -795,26 +795,13 @@ exports.createSchool = async (req, res) => {
     }
 
     // Check if code already exists
-    console.log(`[CODE CHECK] Checking if school code '${cleanCode}' already exists...`);
-    console.log(`[CODE CHECK] Database connection:`, School.db.name);
-    console.log(`[CODE CHECK] Collection:`, School.collection.name);
-    
-    // Count all schools with this code
-    const schoolCount = await School.countDocuments({ code: cleanCode });
-    console.log(`[CODE CHECK] Number of schools with code '${cleanCode}':`, schoolCount);
-    
     const existingSchool = await School.findOne({ code: cleanCode });
-    console.log(`[CODE CHECK] Existing school found:`, existingSchool ? { id: existingSchool._id, name: existingSchool.name, code: existingSchool.code } : 'None');
-    
     if (existingSchool) {
-      console.log(`[CODE CHECK] School code '${cleanCode}' already exists. Rejecting creation.`);
       return res.status(400).json({
         success: false,
         message: `School code '${cleanCode}' already exists. Please choose a different code.`
       });
     }
-    
-    console.log(`[CODE CHECK] School code '${cleanCode}' is available.`);
 
     // Generate database name before creating school
     const dbName = SchoolDatabaseManager.getDatabaseName(cleanCode);
@@ -1133,6 +1120,33 @@ async function createSchoolDatabase(school) {
     
     // Generate database name from school code (sanitized)
     const dbName = SchoolDatabaseManager.getDatabaseName(school.code);
+    
+    // Check if database already exists and drop it (cleanup from failed previous attempts)
+    try {
+      const { MongoClient } = require('mongodb');
+      const mongoUri = process.env.MONGO_URI || 'mongodb://localhost:27017';
+      const cleanupClient = new MongoClient(mongoUri, { useUnifiedTopology: true });
+      await cleanupClient.connect();
+      
+      const admin = cleanupClient.db().admin();
+      const { databases } = await admin.listDatabases();
+      const dbExists = databases.some(db => db.name === dbName);
+      
+      if (dbExists) {
+        console.log(`⚠️ Database ${dbName} already exists! Dropping it before creating new school database...`);
+        const existingDb = cleanupClient.db(dbName);
+        await existingDb.dropDatabase();
+        console.log(`✅ Successfully dropped existing database ${dbName}`);
+        
+        // Close any cached connections to this database
+        await SchoolDatabaseManager.closeSchoolConnection(school.code);
+      }
+      
+      await cleanupClient.close();
+    } catch (cleanupErr) {
+      console.warn(`⚠️ Warning during database cleanup: ${cleanupErr.message}`);
+      // Continue anyway
+    }
     
     // Get connection to the school's dedicated database
     const schoolConnection = await SchoolDatabaseManager.getSchoolConnection(school.code);
@@ -2443,14 +2457,6 @@ exports.deleteSchool = async (req, res) => {
     if (verifyDeletion) {
       console.error('[DELETE VERIFICATION ERROR] School still exists in database after deletion!');
       return res.status(500).json({ success: false, message: 'School deletion failed - school still exists in database' });
-    }
-    
-    // Also verify by school code
-    const verifyByCode = await School.findOne({ code: school.code });
-    console.log('[DELETE VERIFICATION] School with code still exists?', !!verifyByCode);
-    if (verifyByCode) {
-      console.error('[DELETE VERIFICATION ERROR] School with code still exists in database after deletion!');
-      return res.status(500).json({ success: false, message: 'School deletion failed - school code still exists in database' });
     }
     
     if (!deletedSchool) {
