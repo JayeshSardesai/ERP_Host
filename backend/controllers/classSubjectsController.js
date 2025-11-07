@@ -393,43 +393,21 @@ const getSubjectsForClass = async (req, res) => {
     const schoolCode = req.user.schoolCode;
     const { academicYear = '2024-25' } = req.query;
 
-    // Try main database first since admin-added subjects are stored there
-    try {
-      const mainClassSubjects = await ClassSubjectsSimple.findOne({
-        schoolCode,
-        className,
-        academicYear,
-        isActive: true
-      });
-
-      if (mainClassSubjects) {
-        console.log(`[GET CLASS SUBJECTS] Found class "${className}" in main database with ${mainClassSubjects.totalSubjects} subjects`);
-        return res.status(200).json({
-          success: true,
-          message: 'Subjects retrieved successfully from main database',
-          data: {
-            classId: mainClassSubjects._id,
-            className: mainClassSubjects.className,
-            grade: mainClassSubjects.grade,
-            section: mainClassSubjects.section,
-            academicYear: mainClassSubjects.academicYear,
-            totalSubjects: mainClassSubjects.totalSubjects,
-            subjects: mainClassSubjects.getActiveSubjects()
-          }
-        });
-      }
-    } catch (mainDbError) {
-      console.error('[GET CLASS SUBJECTS] Main database error:', mainDbError.message);
-    }
-
-    // Try school-specific database as fallback
     try {
       const schoolConn = await DatabaseManager.getSchoolConnection(schoolCode);
       
-      if (schoolConn) {
+      if (!schoolConn) {
+        console.error(`[GET CLASS SUBJECTS] Failed to get school connection for: ${schoolCode}`);
+        return res.status(500).json({
+          success: false,
+          message: `Failed to connect to school database: ${schoolCode}`
+        });
+      }
+      
+      try {
+        const SchoolClassSubjects = ClassSubjectsSimple.getModelForConnection(schoolConn);
+        
         try {
-          const SchoolClassSubjects = ClassSubjectsSimple.getModelForConnection(schoolConn);
-          
           const classSubjects = await SchoolClassSubjects.findOne({
             schoolCode,
             className,
@@ -437,44 +415,92 @@ const getSubjectsForClass = async (req, res) => {
             isActive: true
           });
 
-          if (classSubjects) {
-            console.log(`[GET CLASS SUBJECTS] Found class "${className}" in school database with ${classSubjects.totalSubjects} subjects`);
+          if (!classSubjects) {
+            // Try main database as fallback
+            console.log(`[GET CLASS SUBJECTS] Class "${className}" not found in school DB, trying main database`);
+            try {
+              const mainClassSubjects = await ClassSubjectsSimple.findOne({
+                schoolCode,
+                className,
+                academicYear,
+                isActive: true
+              });
+
+              if (mainClassSubjects) {
+                console.log(`[GET CLASS SUBJECTS] Found class "${className}" in main database with ${mainClassSubjects.totalSubjects} subjects`);
+                return res.status(200).json({
+                  success: true,
+                  message: 'Subjects retrieved successfully from main database',
+                  data: {
+                    classId: mainClassSubjects._id,
+                    className: mainClassSubjects.className,
+                    grade: mainClassSubjects.grade,
+                    section: mainClassSubjects.section,
+                    academicYear: mainClassSubjects.academicYear,
+                    totalSubjects: mainClassSubjects.totalSubjects,
+                    subjects: mainClassSubjects.getActiveSubjects()
+                  }
+                });
+              }
+            } catch (mainDbError) {
+              console.error('[GET CLASS SUBJECTS] Main database error:', mainDbError.message);
+            }
+
+            // Return empty subjects array if not found in either database
+            console.log(`[GET CLASS SUBJECTS] Class "${className}" not found in either database, returning empty subjects`);
             return res.status(200).json({
               success: true,
-              message: 'Subjects retrieved successfully from school database',
+              message: `Class "${className}" exists but has no subjects configured yet`,
               data: {
-                classId: classSubjects._id,
-                className: classSubjects.className,
-                grade: classSubjects.grade,
-                section: classSubjects.section,
-                academicYear: classSubjects.academicYear,
-                totalSubjects: classSubjects.totalSubjects,
-                subjects: classSubjects.getActiveSubjects()
+                className: className,
+                grade: className,
+                section: null,
+                academicYear: academicYear,
+                totalSubjects: 0,
+                subjects: []
               }
             });
           }
-        } catch (schoolDbError) {
-          console.error('[GET CLASS SUBJECTS] School database error:', schoolDbError.message);
+
+          console.log(`[GET CLASS SUBJECTS] Found class "${className}" with ${classSubjects.totalSubjects} subjects`);
+
+          res.status(200).json({
+            success: true,
+            message: 'Subjects retrieved successfully',
+            data: {
+              classId: classSubjects._id,
+              className: classSubjects.className,
+              grade: classSubjects.grade,
+              section: classSubjects.section,
+              academicYear: classSubjects.academicYear,
+              totalSubjects: classSubjects.totalSubjects,
+              subjects: classSubjects.getActiveSubjects()
+            }
+          });
+        } catch (error) {
+          console.error('[GET CLASS SUBJECTS] Error:', error.message);
+          return res.status(500).json({
+            success: false,
+            message: 'Internal server error while retrieving subjects',
+            error: error.message
+          });
         }
+      } catch (modelError) {
+        console.error('[GET CLASS SUBJECTS] Model error:', modelError.message);
+        return res.status(500).json({
+          success: false,
+          message: 'Error getting database model',
+          error: modelError.message
+        });
       }
     } catch (connectionError) {
       console.error('[GET CLASS SUBJECTS] Connection error:', connectionError.message);
+      return res.status(500).json({
+        success: false,
+        message: 'Error connecting to school database',
+        error: connectionError.message
+      });
     }
-
-    // Return empty subjects array if not found in either database
-    console.log(`[GET CLASS SUBJECTS] Class "${className}" not found in either database, returning empty subjects`);
-    return res.status(200).json({
-      success: true,
-      message: `Class "${className}" exists but has no subjects configured yet`,
-      data: {
-        className: className,
-        grade: className,
-        section: null,
-        academicYear: academicYear,
-        totalSubjects: 0,
-        subjects: []
-      }
-    });
   } catch (error) {
     console.error('[GET CLASS SUBJECTS] Unhandled error:', error);
     return res.status(500).json({
