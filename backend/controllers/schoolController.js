@@ -1824,6 +1824,42 @@ exports.updateSchool = async (req, res) => {
       }
     }
 
+    // Handle array fields that come as strings from FormData
+    if (updateData.admins !== undefined) {
+      console.log('Processing admins field:', typeof updateData.admins, updateData.admins);
+      
+      if (typeof updateData.admins === 'string') {
+        try {
+          const parsed = JSON.parse(updateData.admins);
+          console.log('Parsed admins:', parsed);
+          // Filter out empty strings and invalid ObjectIds
+          const filtered = Array.isArray(parsed) ? parsed.filter(id => id && String(id).trim() !== '') : [];
+          console.log('Filtered admins:', filtered);
+          // Only set if there are valid values, otherwise remove the field
+          if (filtered.length > 0) {
+            updateData.admins = filtered;
+          } else {
+            console.log('Removing empty admins field');
+            delete updateData.admins;
+          }
+        } catch (e) {
+          console.error('Error parsing admins:', e);
+          // If parsing fails, remove the field to avoid casting errors
+          delete updateData.admins;
+        }
+      } else if (Array.isArray(updateData.admins)) {
+        // Filter out empty strings if it's already an array
+        const filtered = updateData.admins.filter(id => id && String(id).trim() !== '');
+        console.log('Filtered array admins:', filtered);
+        if (filtered.length > 0) {
+          updateData.admins = filtered;
+        } else {
+          console.log('Removing empty admins array');
+          delete updateData.admins;
+        }
+      }
+    }
+
     // Handle logo upload with Sharp compression if file is present
     if (req.file) {
       let tempCompressedPath = null;
