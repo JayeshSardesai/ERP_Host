@@ -1784,9 +1784,16 @@ exports.updateSchool = async (req, res) => {
     console.log('School ID:', schoolId);
     console.log('Request body:', JSON.stringify(req.body, null, 2));
     console.log('Request file:', req.file);
+    console.log('Request user:', req.user);
 
     // Check if user has permission to update
+    if (!req.user) {
+      console.error('❌ No user found in request - authentication failed');
+      return res.status(401).json({ message: 'Authentication required' });
+    }
+    
     if (req.user.role !== 'superadmin' && req.user.schoolId?.toString() !== schoolId) {
+      console.error('❌ Access denied for user:', req.user.userId, 'role:', req.user.role);
       return res.status(403).json({ message: 'Access denied' });
     }
 
@@ -1933,8 +1940,13 @@ exports.updateSchool = async (req, res) => {
 
     res.json({ message: 'School updated successfully', school });
   } catch (error) {
-    console.error('Error updating school:', error);
-    res.status(500).json({ message: 'Error updating school', error: error.message });
+    console.error('❌ Error updating school:', error);
+    console.error('❌ Error stack:', error.stack);
+    res.status(500).json({ 
+      message: 'Error updating school', 
+      error: error.message,
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 };
 
