@@ -1792,36 +1792,45 @@ exports.updateSchool = async (req, res) => {
     }
 
     // Parse JSON fields if they come as strings (from FormData)
-    if (typeof updateData.address === 'string') {
-      try {
-        updateData.address = JSON.parse(updateData.address);
-      } catch (e) {
-        console.error('Error parsing address:', e);
+    const parseField = (fieldName) => {
+      if (updateData[fieldName] === undefined || updateData[fieldName] === null) return;
+      
+      if (typeof updateData[fieldName] === 'string') {
+        // Skip if it's just [object Object]
+        if (updateData[fieldName].trim() === '[object Object]') {
+          console.log(`Skipping ${fieldName} as it's an [object Object] string`);
+          delete updateData[fieldName];
+          return;
+        }
+        
+        try {
+          updateData[fieldName] = JSON.parse(updateData[fieldName]);
+        } catch (e) {
+          console.error(`Error parsing ${fieldName}:`, e);
+          // If parsing fails, remove the field to prevent schema validation errors
+          delete updateData[fieldName];
+        }
+      } else if (typeof updateData[fieldName] === 'object' && 
+                Object.prototype.toString.call(updateData[fieldName]) === '[object Object]' && 
+                Object.keys(updateData[fieldName]).length === 0) {
+        // Handle empty objects
+        delete updateData[fieldName];
       }
+    };
+    
+    // Parse all possible object fields
+    ['address', 'contact', 'bankDetails', 'accessMatrix', 
+     'academicSettings', 'settings', 'features', 'stats'].forEach(field => {
+      parseField(field);
+    });
+    
+    // Special handling for boolean fields that might come as strings
+    if (updateData.isActive !== undefined) {
+      updateData.isActive = String(updateData.isActive).toLowerCase() === 'true';
     }
     
-    if (typeof updateData.contact === 'string') {
-      try {
-        updateData.contact = JSON.parse(updateData.contact);
-      } catch (e) {
-        console.error('Error parsing contact:', e);
-      }
-    }
-    
-    if (typeof updateData.bankDetails === 'string') {
-      try {
-        updateData.bankDetails = JSON.parse(updateData.bankDetails);
-      } catch (e) {
-        console.error('Error parsing bankDetails:', e);
-      }
-    }
-    
-    if (typeof updateData.accessMatrix === 'string') {
-      try {
-        updateData.accessMatrix = JSON.parse(updateData.accessMatrix);
-      } catch (e) {
-        console.error('Error parsing accessMatrix:', e);
-      }
+    if (updateData.databaseCreated !== undefined) {
+      updateData.databaseCreated = String(updateData.databaseCreated).toLowerCase() === 'true';
     }
 
     // Handle array fields that come as strings from FormData
