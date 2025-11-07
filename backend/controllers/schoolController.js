@@ -795,13 +795,26 @@ exports.createSchool = async (req, res) => {
     }
 
     // Check if code already exists
+    console.log(`[CODE CHECK] Checking if school code '${cleanCode}' already exists...`);
+    console.log(`[CODE CHECK] Database connection:`, School.db.name);
+    console.log(`[CODE CHECK] Collection:`, School.collection.name);
+    
+    // Count all schools with this code
+    const schoolCount = await School.countDocuments({ code: cleanCode });
+    console.log(`[CODE CHECK] Number of schools with code '${cleanCode}':`, schoolCount);
+    
     const existingSchool = await School.findOne({ code: cleanCode });
+    console.log(`[CODE CHECK] Existing school found:`, existingSchool ? { id: existingSchool._id, name: existingSchool.name, code: existingSchool.code } : 'None');
+    
     if (existingSchool) {
+      console.log(`[CODE CHECK] School code '${cleanCode}' already exists. Rejecting creation.`);
       return res.status(400).json({
         success: false,
         message: `School code '${cleanCode}' already exists. Please choose a different code.`
       });
     }
+    
+    console.log(`[CODE CHECK] School code '${cleanCode}' is available.`);
 
     // Generate database name before creating school
     const dbName = SchoolDatabaseManager.getDatabaseName(cleanCode);
@@ -2430,6 +2443,14 @@ exports.deleteSchool = async (req, res) => {
     if (verifyDeletion) {
       console.error('[DELETE VERIFICATION ERROR] School still exists in database after deletion!');
       return res.status(500).json({ success: false, message: 'School deletion failed - school still exists in database' });
+    }
+    
+    // Also verify by school code
+    const verifyByCode = await School.findOne({ code: school.code });
+    console.log('[DELETE VERIFICATION] School with code still exists?', !!verifyByCode);
+    if (verifyByCode) {
+      console.error('[DELETE VERIFICATION ERROR] School with code still exists in database after deletion!');
+      return res.status(500).json({ success: false, message: 'School deletion failed - school code still exists in database' });
     }
     
     if (!deletedSchool) {
