@@ -2456,21 +2456,22 @@ exports.deleteSchool = async (req, res) => {
       db: School.db.name
     });
 
-    const deletedSchool = await School.findByIdAndDelete(schoolId);
-    console.log('[DELETE DEBUG] School deletion result:', deletedSchool);
-    console.log('[DELETE DEBUG] Was deletion successful?', !!deletedSchool);
+    // Use deleteOne instead of findByIdAndDelete to avoid schema validation issues
+    const deleteResult = await School.deleteOne({ _id: schoolId });
+    console.log('[DELETE DEBUG] School deletion result:', deleteResult);
+    console.log('[DELETE DEBUG] Was deletion successful?', deleteResult.deletedCount === 1);
+    
+    if (deleteResult.deletedCount === 0) {
+      console.log('[DELETE ERROR] Failed to delete school from database');
+      return res.status(500).json({ success: false, message: 'Failed to delete school from database' });
+    }
     
     // Verify deletion by trying to find the school again
-    const verifyDeletion = await School.findById(schoolId);
+    const verifyDeletion = await School.findById(schoolId).lean();
     console.log('[DELETE VERIFICATION] School still exists after deletion?', !!verifyDeletion);
     if (verifyDeletion) {
       console.error('[DELETE VERIFICATION ERROR] School still exists in database after deletion!');
       return res.status(500).json({ success: false, message: 'School deletion failed - school still exists in database' });
-    }
-    
-    if (!deletedSchool) {
-      console.log('[DELETE ERROR] Failed to delete school from database');
-      return res.status(500).json({ success: false, message: 'Failed to delete school from database' });
     }
 
     // Final verification - count schools with this code
