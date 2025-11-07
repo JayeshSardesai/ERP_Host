@@ -1991,16 +1991,38 @@ exports.updateSchool = async (req, res) => {
     // Ensure the logo URL is consistent in the response
     const responseSchool = school.toObject();
     
-    // If logoUrl exists, ensure it's a string and not an object
-    if (responseSchool.logoUrl && typeof responseSchool.logoUrl === 'object') {
-      responseSchool.logoUrl = responseSchool.logoUrl.secure_url || responseSchool.logoUrl.url || '';
+    // Function to get the latest version of a Cloudinary URL
+    const getLatestLogoUrl = (url) => {
+      if (!url) return '';
+      
+      // If it's an object, extract the URL
+      if (typeof url === 'object') {
+        url = url.secure_url || url.url || '';
+      }
+      
+      // If it's a Cloudinary URL, ensure we have the latest version
+      if (url.includes('res.cloudinary.com')) {
+        // Remove any existing version parameter
+        url = url.replace(/\/v\d+\//, '/v' + Math.floor(Date.now() / 1000) + '/');
+        // Add a cache-busting parameter
+        url += (url.includes('?') ? '&' : '?') + 't=' + Date.now();
+      }
+      
+      return url;
+    };
+    
+    // Process logo URLs to ensure they're fresh
+    if (responseSchool.logoUrl) {
+      responseSchool.logoUrl = getLatestLogoUrl(responseSchool.logoUrl);
+    }
+    if (responseSchool.logo) {
+      responseSchool.logo = getLatestLogoUrl(responseSchool.logo);
     }
     
-    // Ensure the logo field is consistent with logoUrl
+    // Ensure both logo and logoUrl are consistent
     if (responseSchool.logoUrl && !responseSchool.logo) {
       responseSchool.logo = responseSchool.logoUrl;
-    } else if (responseSchool.logo && typeof responseSchool.logo === 'object') {
-      responseSchool.logo = responseSchool.logo.secure_url || responseSchool.logo.url || '';
+    } else if (responseSchool.logo && !responseSchool.logoUrl) {
       responseSchool.logoUrl = responseSchool.logo;
     }
 
