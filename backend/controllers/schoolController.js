@@ -1906,12 +1906,15 @@ exports.updateSchool = async (req, res) => {
         }
         
       } catch (error) {
-        console.error('Error handling logo upload:', error);
+        console.error('❌ Error handling logo upload:', error);
+        console.error('❌ Logo upload error stack:', error.stack);
         // Clean up temp files on error
         deleteLocalFile(req.file.path);
         if (tempCompressedPath) {
           deleteLocalFile(tempCompressedPath);
         }
+        // Re-throw the error to stop the update process
+        throw new Error(`Logo upload failed: ${error.message}`);
       }
     }
 
