@@ -15,7 +15,6 @@ const SchoolEditDetails: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
-  const [validationErrors, setValidationErrors] = useState<{ logo?: string }>({});
 
   console.log('[SchoolEditDetails] Component rendered, selectedSchoolId:', selectedSchoolId);
 
@@ -131,32 +130,31 @@ const SchoolEditDetails: React.FC = () => {
       // Validate file type
       const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
       if (!allowedTypes.includes(file.type)) {
-        setValidationErrors(prev => ({ ...prev, logo: 'Only image files (JPEG, PNG, GIF, WebP) are allowed' }));
+        setError('Only image files (JPEG, PNG, GIF, WebP) are allowed');
         return;
       }
-
-      // Validate file size (max 10MB before compression)
+      
+      // Validate file size (10MB max)
       if (file.size > 10 * 1024 * 1024) {
-        setValidationErrors(prev => ({ ...prev, logo: 'File size must be less than 10MB' }));
+        setError('File size must be less than 10MB');
         return;
       }
-
+      
       setLogoFile(file);
-      setValidationErrors(prev => ({ ...prev, logo: '' }));
-
+      
       // Create preview
       const reader = new FileReader();
       reader.onloadend = () => {
         setLogoPreview(reader.result as string);
       };
       reader.readAsDataURL(file);
+      setError(null);
     }
   };
 
-  const removeLogo = () => {
+  const handleRemoveLogo = () => {
     setLogoFile(null);
     setLogoPreview(null);
-    setValidationErrors(prev => ({ ...prev, logo: '' }));
   };
 
   const handleSave = async () => {
@@ -164,35 +162,32 @@ const SchoolEditDetails: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      // Create FormData if logo file is present, otherwise use JSON
-      let requestData: any;
-      let headers: any = {};
-
-      if (logoFile) {
-        // Use FormData for file upload
-        const formData = new FormData();
-        
-        // Add all form fields as JSON strings
-        Object.keys(form).forEach(key => {
-          if (key === 'address' || key === 'contact' || key === 'bankDetails' || key === 'accessMatrix') {
-            formData.append(key, JSON.stringify(form[key]));
-          } else if (form[key] !== null && form[key] !== undefined) {
-            formData.append(key, String(form[key]));
+      // Create FormData for file upload
+      const formData = new FormData();
+      
+      // Add all form fields
+      Object.keys(form).forEach(key => {
+        const value = form[key];
+        if (value !== null && value !== undefined) {
+          // Stringify objects
+          if (typeof value === 'object' && !Array.isArray(value)) {
+            formData.append(key, JSON.stringify(value));
+          } else {
+            formData.append(key, String(value));
           }
-        });
-        
-        // Add logo file
+        }
+      });
+      
+      // Add logo file if selected
+      if (logoFile) {
         formData.append('logo', logoFile);
-        
-        requestData = formData;
-        headers['Content-Type'] = 'multipart/form-data';
-      } else {
-        // Use regular JSON
-        requestData = form;
-        headers['Content-Type'] = 'application/json';
       }
-
-      const res = await api.put(`/schools/${selectedSchoolId}`, requestData, { headers });
+      
+      const res = await api.put(`/schools/${selectedSchoolId}`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
       const updated = (res.data as any)?.school || res.data;
       setProfile(updated);
       await updateSchool({
@@ -215,10 +210,10 @@ const SchoolEditDetails: React.FC = () => {
         website: updated.contact?.website || '',
         secondaryContact: updated.secondaryContact || ''
       } as any);
-      alert('School updated');
+      alert('School updated successfully');
       setCurrentView('school-details');
     } catch (e: any) {
-      setError(e?.message || 'Failed to save');
+      setError(e?.response?.data?.message || e?.message || 'Failed to save');
     } finally {
       setLoading(false);
     }
@@ -287,56 +282,58 @@ const SchoolEditDetails: React.FC = () => {
             <h2 className="text-lg font-semibold text-gray-900">School Logo</h2>
           </div>
           <div className="flex flex-col md:flex-row gap-6 items-start">
-            {/* Current Logo Preview */}
+            {/* Current/Preview Logo */}
             <div className="flex-shrink-0">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Current Logo</label>
-              <div className="w-32 h-32 border-2 border-gray-300 rounded-lg flex items-center justify-center bg-gray-50 overflow-hidden">
-                {(logoPreview || profile?.logoUrl) ? (
-                  <img
-                    src={logoPreview || profile.logoUrl}
-                    alt="School logo"
-                    className="w-full h-full object-contain"
-                  />
+              <div className="w-32 h-32 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center bg-gray-50 overflow-hidden">
+                {logoPreview ? (
+                  <img src={logoPreview} alt="Logo preview" className="w-full h-full object-contain" />
+                ) : profile?.logoUrl ? (
+                  <img src={profile.logoUrl} alt="Current logo" className="w-full h-full object-contain" />
                 ) : (
                   <ImageIcon className="h-12 w-12 text-gray-400" />
                 )}
               </div>
+              {(logoPreview || profile?.logoUrl) && (
+                <p className="text-xs text-gray-500 mt-2 text-center">
+                  {logoPreview ? 'New logo' : 'Current logo'}
+                </p>
+              )}
             </div>
-
+            
             {/* Upload Controls */}
             <div className="flex-1">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Upload New Logo</label>
-              <div className="space-y-3">
-                <div className="flex items-center gap-3">
-                  <label className="flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
-                    <Upload className="h-4 w-4 text-gray-600" />
-                    <span className="text-sm text-gray-700">Choose File</span>
-                    <input
-                      type="file"
-                      accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
-                      onChange={handleLogoChange}
-                      className="hidden"
-                    />
-                  </label>
-                  {logoFile && (
-                    <button
-                      onClick={removeLogo}
-                      className="px-3 py-2 text-sm text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-colors"
-                    >
-                      Remove
-                    </button>
-                  )}
-                </div>
-                {logoFile && (
-                  <p className="text-sm text-green-600">✓ New logo selected: {logoFile.name}</p>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Upload New Logo
+              </label>
+              <p className="text-sm text-gray-500 mb-3">
+                Supported formats: JPEG, PNG, GIF, WebP (Max 10MB). Logo will be compressed to ~30KB.
+              </p>
+              <div className="flex gap-2">
+                <label className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer">
+                  <Upload className="h-4 w-4" />
+                  <span>Choose File</span>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                    onChange={handleLogoChange}
+                    className="hidden"
+                  />
+                </label>
+                {logoPreview && (
+                  <button
+                    onClick={handleRemoveLogo}
+                    className="flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                  >
+                    <X className="h-4 w-4" />
+                    <span>Remove</span>
+                  </button>
                 )}
-                {validationErrors.logo && (
-                  <p className="text-sm text-red-600">{validationErrors.logo}</p>
-                )}
-                <p className="text-xs text-gray-500">
-                  Accepted formats: JPEG, PNG, GIF, WebP • Max size: 10MB • Will be compressed to ~30KB
-                </p>
               </div>
+              {logoFile && (
+                <p className="text-sm text-green-600 mt-2">
+                  ✓ Selected: {logoFile.name} ({(logoFile.size / 1024).toFixed(2)} KB)
+                </p>
+              )}
             </div>
           </div>
         </div>
