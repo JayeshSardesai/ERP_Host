@@ -2344,7 +2344,8 @@ exports.deleteSchool = async (req, res) => {
       return res.status(403).json({ success: false, message: 'Only super admin can delete schools' });
     }
 
-    const school = await School.findById(schoolId);
+    // Use lean() to get plain JavaScript object and avoid Mongoose schema validation issues
+    const school = await School.findById(schoolId).lean();
     console.log('[DELETE DEBUG] School found:', school);
     if (!school) {
       console.log('[DELETE ERROR] School not found');
