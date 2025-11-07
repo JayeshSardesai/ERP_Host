@@ -2385,27 +2385,31 @@ exports.deleteSchool = async (req, res) => {
       }
       
       try {
-        const { MongoClient } = require('mongodb');
-        const mongoUri = process.env.MONGO_URI || 'mongodb://localhost:27017';
-        dbDropInfo.mongoUri = mongoUri;
-
-        const adminClient = new MongoClient(mongoUri, { useUnifiedTopology: true });
-        await adminClient.connect();
+        // Use the existing mongoose connection instead of creating a new one
+        const connection = mongoose.connection;
+        dbDropInfo.mongoUri = connection.client.s.url;
+        
+        console.log(`[DB DROP] Using existing mongoose connection to drop database`);
+        console.log(`[DB DROP] Connection state: ${connection.readyState}`);
 
         // List databases before drop for diagnostics
         try {
-          const admin = adminClient.db().admin();
+          const admin = connection.db.admin();
           const { databases } = await admin.listDatabases();
           dbDropInfo.dbListBefore = databases.map(d => d.name);
           console.log(`[DB DROP DEBUG] Databases before drop: ${dbDropInfo.dbListBefore.join(', ')}`);
+          
+          // Check if the database exists
+          const dbExists = databases.some(db => db.name === dbNameToDrop);
+          console.log(`[DB DROP DEBUG] Database ${dbNameToDrop} exists: ${dbExists}`);
         } catch (listErr) {
           console.warn('[DB DROP DEBUG] Could not list databases before drop:', listErr.message || listErr);
         }
 
-        const adminDb = adminClient.db(dbNameToDrop);
-        // Attempt to drop the database and capture the result
+        // Drop the database using mongoose connection
+        const dbToDrop = connection.useDb(dbNameToDrop);
         try {
-          const dropResult = await adminDb.dropDatabase();
+          const dropResult = await dbToDrop.dropDatabase();
           dbDropInfo.dropped = !!dropResult;
           console.log(`[DB DROP RESULT] dropDatabase(${dbNameToDrop}) returned:`, dropResult);
         } catch (dropErr) {
@@ -2415,23 +2419,27 @@ exports.deleteSchool = async (req, res) => {
 
         // List databases after drop for diagnostics
         try {
-          const admin = adminClient.db().admin();
+          const admin = connection.db.admin();
           const { databases } = await admin.listDatabases();
           dbDropInfo.dbListAfter = databases.map(d => d.name);
           console.log(`[DB DROP DEBUG] Databases after drop: ${dbDropInfo.dbListAfter.join(', ')}`);
+          
+          // Verify the database was dropped
+          const stillExists = databases.some(db => db.name === dbNameToDrop);
+          console.log(`[DB DROP DEBUG] Database ${dbNameToDrop} still exists after drop: ${stillExists}`);
         } catch (listErr) {
           console.warn('[DB DROP DEBUG] Could not list databases after drop:', listErr.message || listErr);
         }
 
-        await adminClient.close();
         if (dbDropInfo.dropped) {
-          console.log(`[DB DROPPED] Dropped database ${dbNameToDrop} for school ${school.code}`);
+          console.log(`[DB DROPPED] Successfully dropped database ${dbNameToDrop} for school ${school.code}`);
         } else {
           console.warn(`[DB DROP] Database ${dbNameToDrop} was not dropped. See dbDropInfo for details.`);
         }
       } catch (dbErr) {
         dbDropInfo.error = dbErr.message || String(dbErr);
         console.error(`[DB DROP ERROR] Failed to drop database ${dbNameToDrop}:`, dbDropInfo.error);
+        console.error(`[DB DROP ERROR] Full error:`, dbErr);
         // Continue — don't block deletion if DB drop fails
       }
     }
