@@ -1076,6 +1076,15 @@ function generateCSV(users, role) {
             case 'primaryPhone': value = contact.primaryPhone; break;
             case 'dateOfBirth': value = sd.dateOfBirth ? new Date(sd.dateOfBirth).toISOString().split('T')[0] : ''; break;
             case 'gender': value = sd.gender; break;
+            // SATS Standard Address Fields
+            case 'address': value = addressP.street || ''; break;
+            case 'city/village/town': value = addressP.city || ''; break;
+            case 'locality': value = addressP.area || ''; break;
+            case 'pincode': value = addressP.pincode || ''; break;
+            case 'state': value = addressP.state || ''; break;
+            case 'district': value = addressP.district || ''; break;
+            case 'taluka': value = addressP.taluka || ''; break;
+            // Standard Address Fields (for compatibility)
             case 'permanentStreet': value = addressP.street; break;
             case 'permanentArea': value = addressP.area; break;
             case 'permanentCity': value = addressP.city; break;

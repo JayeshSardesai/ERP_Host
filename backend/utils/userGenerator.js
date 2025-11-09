@@ -597,7 +597,8 @@ class UserGenerator {
       const hasAddressUpdates = updateData.permanentStreet !== undefined || updateData.permanentArea !== undefined || 
                                 updateData.permanentCity !== undefined || updateData.permanentState !== undefined ||
                                 updateData.permanentPincode !== undefined || updateData.permanentCountry !== undefined ||
-                                updateData.permanentLandmark !== undefined || updateData.sameAsPermanent !== undefined;
+                                updateData.permanentLandmark !== undefined || updateData.sameAsPermanent !== undefined ||
+                                updateData.district !== undefined || updateData.taluka !== undefined;
       
       if (hasAddressUpdates) {
         // Check if current address is a string - if so, convert to object first
@@ -611,7 +612,9 @@ class UserGenerator {
               state: updateData.permanentState || '',
               country: updateData.permanentCountry || 'India',
               pincode: updateData.permanentPincode || '',
-              landmark: updateData.permanentLandmark || ''
+              landmark: updateData.permanentLandmark || '',
+              district: updateData.district || '',
+              taluka: updateData.taluka || ''
             },
             current: null,
             sameAsPermanent: updateData.sameAsPermanent !== false
@@ -625,6 +628,8 @@ class UserGenerator {
           if (updateData.permanentPincode !== undefined) updateFields['address.permanent.pincode'] = updateData.permanentPincode;
           if (updateData.permanentCountry !== undefined) updateFields['address.permanent.country'] = updateData.permanentCountry;
           if (updateData.permanentLandmark !== undefined) updateFields['address.permanent.landmark'] = updateData.permanentLandmark;
+          if (updateData.district !== undefined) updateFields['address.permanent.district'] = updateData.district;
+          if (updateData.taluka !== undefined) updateFields['address.permanent.taluka'] = updateData.taluka;
           if (updateData.sameAsPermanent !== undefined) updateFields['address.sameAsPermanent'] = updateData.sameAsPermanent;
         }
       }
