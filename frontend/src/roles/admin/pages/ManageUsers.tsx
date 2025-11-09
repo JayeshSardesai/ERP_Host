@@ -654,6 +654,7 @@ const ManageUsers: React.FC = () => {
 
       const qualification = teacherDetails?.highestQualification || formData.qualification;
       const experience = teacherDetails?.totalExperience || Number(formData.experience);
+      const subjects = teacherDetails?.subjects || (typeof formData.subjects === 'string' ? formData.subjects.split(',') : formData.subjects);
 
       if (!qualification || qualification.trim() === '') {
         errors.push('Highest qualification is required for teachers');
@@ -661,7 +662,10 @@ const ManageUsers: React.FC = () => {
       if (experience === undefined || experience < 0) {
         errors.push('Total experience is required for teachers (minimum 0 years)');
       }
-      // Subjects are now optional - no validation needed
+      // Subjects are optional for teachers to allow flexible user creation
+      // if (!subjects || subjects.length === 0 || (Array.isArray(subjects) && subjects.filter(s => s.trim()).length === 0)) {
+      //   errors.push('At least one subject is required for teachers');
+      // }
 
       // Employee ID validation if provided
       const employeeId = teacherDetails?.employeeId || formData.employeeId;

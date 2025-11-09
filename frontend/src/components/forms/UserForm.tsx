@@ -710,7 +710,7 @@ const UserForm: React.FC<UserFormProps> = ({
           </div>
 
           <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Subjects (Optional)</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Subjects *</label>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2 max-h-40 overflow-y-auto border border-gray-300 rounded-lg p-3">
               {subjectOptions.map(subject => (
                 <label key={subject} className="flex items-center">
@@ -731,6 +731,7 @@ const UserForm: React.FC<UserFormProps> = ({
                 </label>
               ))}
             </div>
+            {formErrors.subjects && <p className="text-red-600 text-sm mt-1">{formErrors.subjects}</p>}
           </div>
         </div>
       )}
