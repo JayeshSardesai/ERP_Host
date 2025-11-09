@@ -757,8 +757,8 @@ function getAdminHeaders() {
 function getTeacherHeaders() {
   return [
     'userId', 'firstName', 'middleName', 'lastName', 'email', 'primaryPhone',
-    'secondaryPhone', 'whatsappNumber', 'dateOfBirth', 'gender',
-    'permanentStreet', 'permanentState', 'permanentCountry', 'permanentLandmark',
+    'dateOfBirth', 'gender',
+    'permanentStreet', 'permanentState', 'permanentCountry',
     'sameAsPermanent',
     'totalExperience', 'subjects',
     'employeeId', 'isActive', 'profileImage'
@@ -873,9 +873,9 @@ async function createTeacherFromRow(normalizedRow, schoolIdAsObjectId, userId, s
     _id: new ObjectId(), userId, schoolCode: schoolCode.toUpperCase(), schoolId: schoolIdAsObjectId,
     name: { firstName, middleName: normalizedRow['middlename'] || '', lastName, displayName: `${firstName} ${lastName}`.trim() },
     email: email, password: hashedPassword, temporaryPassword: temporaryPassword, passwordChangeRequired: true, role: 'teacher',
-    contact: { primaryPhone: normalizedRow['primaryphone'] || '', secondaryPhone: normalizedRow['secondaryphone'] || '', whatsappNumber: normalizedRow['whatsappnumber'] || '', },
+    contact: { primaryPhone: normalizedRow['primaryphone'] || '' },
     address: {
-      permanent: { street: normalizedRow['permanentstreet'] || '', state: normalizedRow['permanentstate'] || '', country: normalizedRow['permanentcountry'] || 'India', landmark: normalizedRow['permanentlandmark'] || '' },
+      permanent: { street: normalizedRow['permanentstreet'] || '', state: normalizedRow['permanentstate'] || '', country: normalizedRow['permanentcountry'] || 'India' },
       current: sameAsPermanent ? undefined : undefined,
       sameAsPermanent: sameAsPermanent
     },
@@ -1125,14 +1125,11 @@ function generateCSV(users, role) {
             case 'lastName': value = name.lastName; break;
             case 'email': value = user.email; break;
             case 'primaryPhone': value = contact.primaryPhone; break;
-            case 'secondaryPhone': value = contact.secondaryPhone; break;
-            case 'whatsappNumber': value = contact.whatsappNumber || ''; break;
             case 'dateOfBirth': value = personal.dateOfBirth ? new Date(personal.dateOfBirth).toISOString().split('T')[0] : ''; break;
             case 'gender': value = personal.gender; break;
             case 'permanentStreet': value = addressP.street; break;
             case 'permanentState': value = addressP.state; break;
             case 'permanentCountry': value = addressP.country; break;
-            case 'permanentLandmark': value = addressP.landmark; break;
             case 'sameAsPermanent': value = user.address?.sameAsPermanent === false ? 'FALSE' : 'TRUE'; break;
             case 'totalExperience': value = teachingInfo.experience; break;
             case 'subjects': value = Array.isArray(teachingInfo.subjects) ? teachingInfo.subjects.join(', ') : ''; break;
