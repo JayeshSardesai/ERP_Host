@@ -235,7 +235,7 @@ exports.importUsers = async (req, res) => {
             inferredRole = 'student';
           }
           // 2. Then check for teacher
-          else if (firstRowKeys.has('joiningdate') && firstRowKeys.has('highestqualification') && firstRowKeys.has('totalexperience')) {
+          else if (firstRowKeys.has('totalexperience') && firstRowKeys.has('subjects') && firstRowKeys.has('employeeid')) {
             inferredRole = 'teacher';
           }
           // 3. Then check for admin <--- NEW: Admin Inference
@@ -243,7 +243,7 @@ exports.importUsers = async (req, res) => {
             inferredRole = 'admin';
           }
           else {
-            throw new Error("Could not infer user role (student/teacher/admin) from CSV columns. Ensure headers like 'currentclass'/'fathername' (for students) OR 'joiningdate'/'highestqualification' (for teachers) OR 'admintype'/'designation' (for admins) are present."); // <--- MODIFIED ERROR MESSAGE
+            throw new Error("Could not infer user role (student/teacher/admin) from CSV columns. Ensure headers like 'currentclass'/'fathername' (for students) OR 'totalexperience'/'subjects'/'employeeid' (for teachers) OR 'admintype'/'designation' (for admins) are present."); // <--- MODIFIED ERROR MESSAGE
           }
           console.log(`Inferred Role: ${inferredRole}`);
         }
