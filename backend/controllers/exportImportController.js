@@ -239,11 +239,11 @@ exports.importUsers = async (req, res) => {
             inferredRole = 'teacher';
           }
           // 3. Then check for admin <--- NEW: Admin Inference
-          else if (firstRowKeys.has('designation') && firstRowKeys.has('qualification') && firstRowKeys.has('experience')) {
+          else if (firstRowKeys.has('joiningdate') && (firstRowKeys.has('admintype') || firstRowKeys.has('designation'))) {
             inferredRole = 'admin';
           }
           else {
-            throw new Error("Could not infer user role (student/teacher/admin) from CSV columns. Ensure headers like 'currentclass'/'fathername' (for students) OR 'totalexperience'/'subjects'/'employeeid' (for teachers) OR 'designation'/'qualification'/'experience' (for admins) are present."); // <--- MODIFIED ERROR MESSAGE
+            throw new Error("Could not infer user role (student/teacher/admin) from CSV columns. Ensure headers like 'currentclass'/'fathername' (for students) OR 'totalexperience'/'subjects'/'employeeid' (for teachers) OR 'admintype'/'designation' (for admins) are present."); // <--- MODIFIED ERROR MESSAGE
           }
           console.log(`Inferred Role: ${inferredRole}`);
         }
@@ -744,16 +744,13 @@ function parseFlexibleDate(dateString, fieldName = 'Date') {
 // --- Define Headers (Admin) <--- NEW FUNCTION
 function getAdminHeaders() {
   return [
-    // Basic Information
-    'userId', 'firstName', 'middleName', 'lastName', 'email', 'primaryPhone',
-    'dateOfBirth', 'gender',
-    // Administrative Information
-    'employeeId', 'designation', 'qualification', 'experience',
-    // Address Information
-    'permanentStreet', 'permanentArea', 'permanentCity', 'permanentState', 'permanentPincode', 'permanentCountry',
-    'sameAsPermanent',
-    // System
-    'isActive', 'profileImage'
+    'First Name', 'Middle Name', 'Last Name', 'Email', 'Phone', 'Date of Birth', 
+    'bloodGroup', 'Gender', 'Address', 'City', 'State', 'Pin Code', 'Status', 
+    'TC No', 'Enrollment No', 'Roll Number', 'Class', 'Section', 'Academic Year', 
+    'Father Name', 'Mother Name', 'Guardian Name', 'Father Phone', 'Mother Phone', 
+    'Aadhaar Number', 'Religion', 'Caste', 'Category', 'Disability', 'Is RTE Candidate', 
+    'Previous School', 'Transport Mode', 'Bank Name', 'Account Number', 'IFSC Code', 
+    'profileimage'
   ];
 }
 
@@ -789,40 +786,19 @@ function validateTeacherRow(normalizedRow, rowNumber) {
   return errors;
 }
 
-// --- Validation function for Admin ---
-function validateAdminRow(normalizedRow, rowNumber) {
-  const errors = [];
-  const requiredKeys = [
-    'firstname', 'lastname', 'email', 'primaryphone',
-    'dateofbirth', 'gender', 'designation', 'qualification'
-  ];
-  requiredKeys.forEach(key => {
-    if (!normalizedRow.hasOwnProperty(key) || normalizedRow[key] === undefined || normalizedRow[key] === null || String(normalizedRow[key]).trim() === '') {
-      errors.push({ row: rowNumber, error: `is required`, field: key });
-    }
-  });
-  if (normalizedRow['email'] && !/\S+@\S+\.\S+/.test(normalizedRow['email'])) { errors.push({ row: rowNumber, error: `Invalid format`, field: 'email' }); }
-  const pincode = normalizedRow['permanentpincode']; if (pincode && pincode.trim() !== '' && !/^\d{6}$/.test(pincode)) { errors.push({ row: rowNumber, error: `Invalid format (must be 6 digits if provided)`, field: 'permanentpincode' }); }
-  const gender = normalizedRow['gender']?.toLowerCase(); if (gender && gender.trim() !== '' && !['male', 'female', 'other'].includes(gender)) { errors.push({ row: rowNumber, error: `Invalid value (must be 'male', 'female', or 'other' if provided)`, field: 'gender' }); }
-  const phone = normalizedRow['primaryphone']; if (phone && phone.trim() !== '' && !/^\d{7,15}$/.test(phone.replace(/\D/g, ''))) { errors.push({ row: rowNumber, error: `Invalid format (must be 7-15 digits if provided)`, field: 'primaryphone' }); }
-  if (normalizedRow['dateofbirth']) { try { parseFlexibleDate(normalizedRow['dateofbirth'], 'Date of Birth'); } catch (e) { errors.push({ row: rowNumber, error: e.message, field: 'dateofbirth' }); } }
-  const exp = normalizedRow['experience']; if (exp && isNaN(Number(exp))) { errors.push({ row: rowNumber, error: `must be a number`, field: 'experience' }); }
-  return errors;
-}
-
 async function createAdminFromRow(normalizedRow, schoolIdAsObjectId, userId, schoolCode, creatingUserIdAsObjectId) {
   const email = normalizedRow['email'];
   const finalDateOfBirth = parseFlexibleDate(normalizedRow['dateofbirth'], 'Date of Birth'); if (!finalDateOfBirth) throw new Error('Date of Birth is required and could not be parsed.');
-  const finalJoiningDate = new Date(); // Default to current date
+  const finalJoiningDate = parseFlexibleDate(normalizedRow['joiningdate'], 'Joining Date'); if (!finalJoiningDate) throw new Error('Joining Date is required and could not be parsed.');
   let temporaryPassword = generateRandomPassword(8); const hashedPassword = await bcrypt.hash(temporaryPassword, 10);
   let gender = normalizedRow['gender']?.toLowerCase(); if (!['male', 'female', 'other'].includes(gender)) gender = 'other';
   const isActiveValue = normalizedRow['isactive']?.toLowerCase(); let isActive = true; if (isActiveValue === 'false' || isActiveValue === 'inactive' || isActiveValue === 'no' || isActiveValue === '0') { isActive = false; }
   const sameAsPermanent = normalizedRow['sameaspermanent']?.toLowerCase() !== 'false';
   let permanentPincode = normalizedRow['permanentpincode'] || ''; if (permanentPincode && !/^\d{6}$/.test(permanentPincode)) permanentPincode = '';
-  let experience = parseInt(normalizedRow['experience'] || '0'); if (isNaN(experience) || experience < 0) experience = 0;
+  let currentPincode = normalizedRow['currentpincode'] || ''; if (currentPincode && !/^\d{6}$/.test(currentPincode)) currentPincode = '';
   const firstName = normalizedRow['firstname'] || ''; const lastName = normalizedRow['lastname'] || '';
 
-  // Handle profile image if provided
+  // Handle profile image if provided <--- IMAGE UPLOAD
   let profileImagePath = '';
   if (normalizedRow['profileimage']) {
     profileImagePath = await copyProfilePicture(normalizedRow['profileimage'], userId, schoolCode);
@@ -833,24 +809,40 @@ async function createAdminFromRow(normalizedRow, schoolIdAsObjectId, userId, sch
     _id: new ObjectId(), userId, schoolCode: schoolCode.toUpperCase(), schoolId: schoolIdAsObjectId,
     name: { firstName, middleName: normalizedRow['middlename'] || '', lastName, displayName: `${firstName} ${lastName}`.trim() },
     email: email, password: hashedPassword, temporaryPassword: temporaryPassword, passwordChangeRequired: true, role: 'admin',
-    contact: { primaryPhone: normalizedRow['primaryphone'] || '' },
+    contact: { primaryPhone: normalizedRow['primaryphone'] || '', secondaryPhone: normalizedRow['secondaryphone'] || '', whatsappNumber: normalizedRow['whatsappnumber'] || '', },
     address: {
-      permanent: { street: normalizedRow['permanentstreet'] || '', area: normalizedRow['permanentarea'] || '', city: normalizedRow['permanentcity'] || '', state: normalizedRow['permanentstate'] || '', country: normalizedRow['permanentcountry'] || 'India', pincode: permanentPincode },
-      current: undefined,
+      permanent: { street: normalizedRow['permanentstreet'] || '', area: normalizedRow['permanentarea'] || '', city: normalizedRow['permanentcity'] || '', state: normalizedRow['permanentstate'] || '', country: normalizedRow['permanentcountry'] || 'India', pincode: permanentPincode, landmark: normalizedRow['permanentlandmark'] || '' },
+      current: sameAsPermanent ? undefined : { street: normalizedRow['currentstreet'] || '', area: normalizedRow['currentarea'] || '', city: normalizedRow['currentcity'] || '', state: normalizedRow['currentstate'] || '', country: normalizedRow['currentcountry'] || 'India', pincode: currentPincode, landmark: normalizedRow['currentlandmark'] || '' },
       sameAsPermanent: sameAsPermanent
     },
-    identity: {},
+    identity: { aadharNumber: normalizedRow['aadharnumber'] || '', panNumber: normalizedRow['pannumber'] || '' },
     profileImage: profileImagePath,
     isActive: isActive, createdAt: new Date(), updatedAt: new Date(),
     schoolAccess: { joinedDate: finalJoiningDate, assignedBy: creatingUserIdAsObjectId, status: 'active', accessLevel: 'full' },
     auditTrail: { createdBy: creatingUserIdAsObjectId, createdAt: new Date() },
     adminDetails: {
       employeeId: normalizedRow['employeeid']?.trim() || userId,
+      joiningDate: finalJoiningDate,
       designation: normalizedRow['designation']?.trim() || '',
-      qualification: normalizedRow['qualification']?.trim() || '',
-      experience: experience,
-      dateOfBirth: finalDateOfBirth,
-      gender: gender
+      adminType: normalizedRow['admintype']?.trim() || 'admin',
+      department: normalizedRow['department']?.trim() || '',
+      permissions: {
+        userManagement: normalizedRow['permissions_usermanagement']?.toLowerCase() === 'true',
+        academicManagement: normalizedRow['permissions_academicmanagement']?.toLowerCase() === 'true',
+        feeManagement: normalizedRow['permissions_feemanagement']?.toLowerCase() === 'true',
+        reportGeneration: normalizedRow['permissions_reportgeneration']?.toLowerCase() === 'true',
+        systemSettings: normalizedRow['permissions_systemsettings']?.toLowerCase() === 'true',
+        schoolSettings: normalizedRow['permissions_schoolsettings']?.toLowerCase() === 'true',
+        dataExport: normalizedRow['permissions_dataexport']?.toLowerCase() === 'true',
+        auditLogs: normalizedRow['permissions_auditlogs']?.toLowerCase() === 'true'
+      },
+      bankDetails: {
+        accountNumber: normalizedRow['bankaccountno']?.trim() || '',
+        ifscCode: normalizedRow['bankifsc']?.trim() || '',
+        bankName: normalizedRow['bankname']?.trim() || '',
+        branchName: normalizedRow['bankbranchname']?.trim() || '',
+        accountHolderName: normalizedRow['accountholdername']?.trim() || `${firstName} ${lastName}`.trim()
+      }
     }
   };
   return newAdmin;
@@ -1160,7 +1152,6 @@ function generateCSV(users, role) {
   } else if (role.toLowerCase() === 'admin') {
     headers = getAdminHeaders();
     rows = users.map(user => {
-      const adminDetails = user.adminDetails || {};
       const adminInfo = user.adminInfo || {};
       const personal = user.personal || {};
       const name = user.name || {};
@@ -1173,32 +1164,54 @@ function generateCSV(users, role) {
         let value = '';
         try {
           switch (header) {
-            // Basic Information
             case 'userId': value = user.userId; break;
             case 'firstName': value = name.firstName; break;
             case 'middleName': value = name.middleName; break;
             case 'lastName': value = name.lastName; break;
             case 'email': value = user.email; break;
             case 'primaryPhone': value = contact.primaryPhone; break;
-            case 'dateOfBirth': 
-              value = adminDetails.dateOfBirth ? new Date(adminDetails.dateOfBirth).toISOString().split('T')[0] : 
-                      (personal.dateOfBirth ? new Date(personal.dateOfBirth).toISOString().split('T')[0] : ''); 
-              break;
-            case 'gender': value = adminDetails.gender || personal.gender || ''; break;
-            // Administrative Information
-            case 'employeeId': value = adminDetails.employeeId || adminInfo.employeeId || ''; break;
-            case 'designation': value = adminDetails.designation || adminInfo.designation || ''; break;
-            case 'qualification': value = adminDetails.qualification || adminInfo.qualification || ''; break;
-            case 'experience': value = adminDetails.experience || adminInfo.experience || ''; break;
-            // Address Information
+            case 'secondaryPhone': value = contact.secondaryPhone; break;
+            case 'whatsappNumber': value = contact.whatsappNumber || ''; break;
+            case 'dateOfBirth': value = personal.dateOfBirth ? new Date(personal.dateOfBirth).toISOString().split('T')[0] : ''; break;
+            case 'gender': value = personal.gender; break;
             case 'permanentStreet': value = addressP.street; break;
             case 'permanentArea': value = addressP.area; break;
             case 'permanentCity': value = addressP.city; break;
             case 'permanentState': value = addressP.state; break;
             case 'permanentPincode': value = addressP.pincode; break;
             case 'permanentCountry': value = addressP.country; break;
+            case 'permanentLandmark': value = addressP.landmark; break;
             case 'sameAsPermanent': value = user.address?.sameAsPermanent === false ? 'FALSE' : 'TRUE'; break;
-            // System
+            case 'currentStreet': value = addressC?.street || ''; break;
+            case 'currentArea': value = addressC?.area || ''; break;
+            case 'currentCity': value = addressC?.city || ''; break;
+            case 'currentState': value = addressC?.state || ''; break;
+            case 'currentPincode': value = addressC?.pincode || ''; break;
+            case 'currentCountry': value = addressC?.country || ''; break;
+            case 'currentLandmark': value = addressC?.landmark || ''; break;
+            case 'aadharNumber': value = personal.aadhaar; break;
+            case 'panNumber': value = personal.pan; break;
+            case 'joiningDate': value = adminInfo.joinDate ? new Date(adminInfo.joinDate).toISOString().split('T')[0] : ''; break;
+            case 'employeeId': value = adminInfo.employeeId; break;
+            case 'adminType': value = 'admin'; break; // Default value
+            case 'designation': value = adminInfo.designation || ''; break;
+            case 'department': value = adminInfo.department; break;
+            case 'permissions_userManagement': value = Array.isArray(adminInfo.permissions) && adminInfo.permissions.includes('manage_users') ? 'TRUE' : 'FALSE'; break;
+            case 'permissions_academicManagement': value = Array.isArray(adminInfo.permissions) && adminInfo.permissions.includes('manage_academics') ? 'TRUE' : 'FALSE'; break;
+            case 'permissions_feeManagement': value = Array.isArray(adminInfo.permissions) && adminInfo.permissions.includes('manage_fees') ? 'TRUE' : 'FALSE'; break;
+            case 'permissions_reportGeneration': value = Array.isArray(adminInfo.permissions) && adminInfo.permissions.includes('view_reports') ? 'TRUE' : 'FALSE'; break;
+            case 'permissions_systemSettings': value = Array.isArray(adminInfo.permissions) && adminInfo.permissions.includes('manage_system') ? 'TRUE' : 'FALSE'; break;
+            case 'permissions_schoolSettings': value = Array.isArray(adminInfo.permissions) && adminInfo.permissions.includes('manage_school') ? 'TRUE' : 'FALSE'; break;
+            case 'permissions_dataExport': value = Array.isArray(adminInfo.permissions) && adminInfo.permissions.includes('export_data') ? 'TRUE' : 'FALSE'; break;
+            case 'permissions_auditLogs': value = Array.isArray(adminInfo.permissions) && adminInfo.permissions.includes('view_audit') ? 'TRUE' : 'FALSE'; break;
+            case 'bankName': value = ''; break; // Not in schema
+            case 'accountNumber': value = ''; break; // Not in schema
+            case 'bankIFSC': value = ''; break; // Not in schema
+            case 'accountHolderName': value = ''; break; // Not in schema
+            case 'bankBranchName': value = ''; break; // Not in schema
+            case 'bloodGroup': value = personal.bloodGroup; break;
+            case 'nationality': value = personal.nationality; break;
+            case 'religion': value = personal.religion; break;
             case 'isActive': value = user.isActive === false ? 'false' : 'true'; break;
             case 'profileImage': value = user.profileImage || ''; break;
             default: value = '';
@@ -1303,14 +1316,27 @@ function formatUserForExport(user, role) {
       subjects: Array.isArray(user.teacherDetails.subjects) ? user.teacherDetails.subjects.join(', ') : '',
       employeeId: user.teacherDetails.employeeId,
     });
-  } else if (role === 'admin' && user.adminDetails) { 
+  } else if (role === 'admin' && user.adminDetails) { // <--- NEW: Admin Export Format
     Object.assign(formatted, {
-      dateOfBirth: user.adminDetails.dateOfBirth || user.dateOfBirth,
+      dateOfBirth: user.adminDetails.dateOfBirth || user.dateOfBirth, // Use top-level if adminDetails lacks it
       gender: user.adminDetails.gender || user.gender,
+      joiningDate: user.adminDetails.joiningDate,
       employeeId: user.adminDetails.employeeId,
+      adminType: user.adminDetails.adminType,
       designation: user.adminDetails.designation,
-      qualification: user.adminDetails.qualification,
-      experience: user.adminDetails.experience,
+      department: user.adminDetails.department,
+      bankName: user.adminDetails.bankDetails?.bankName,
+      bankAccountNo: user.adminDetails.bankDetails?.accountNumber,
+      bankIFSC: user.adminDetails.bankDetails?.ifscCode,
+      accountHolderName: user.adminDetails.bankDetails?.accountHolderName,
+      userManagementPermission: user.adminDetails.permissions?.userManagement,
+      academicManagementPermission: user.adminDetails.permissions?.academicManagement,
+      feeManagementPermission: user.adminDetails.permissions?.feeManagement,
+      reportGenerationPermission: user.adminDetails.permissions?.reportGeneration,
+      systemSettingsPermission: user.adminDetails.permissions?.systemSettings,
+      schoolSettingsPermission: user.adminDetails.permissions?.schoolSettings,
+      dataExportPermission: user.adminDetails.permissions?.dataExport,
+      auditLogsPermission: user.adminDetails.permissions?.auditLogs,
     });
   }
   // Remove undefined fields to keep export clean
