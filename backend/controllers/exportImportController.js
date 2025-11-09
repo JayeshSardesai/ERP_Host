@@ -147,13 +147,15 @@ exports.importUsers = async (req, res) => {
     'dateofbirth': 'dateofbirth', 'dob': 'dateofbirth', 'birthdate': 'dateofbirth',
     'gender': 'gender',
     // Address Info (Common)
-    'address': 'permanentstreet', 'permanentstreet': 'permanentstreet', 'permanentarea': 'permanentarea',
-    'city': 'permanentcity', 'permanentcity': 'permanentcity', 'state': 'permanentstate', 'permanentstate': 'permanentstate',
-    'pincode': 'permanentpincode', 'permanentpincode': 'permanentpincode',
+    'address': 'address', 'permanentstreet': 'permanentstreet', 'permanentarea': 'permanentarea',
+    'city': 'permanentcity', 'permanentcity': 'permanentcity', 'state': 'state', 'permanentstate': 'permanentstate',
+    'pincode': 'pincode', 'permanentpincode': 'permanentpincode',
     'country': 'permanentcountry', 'permanentcountry': 'permanentcountry', 'permanentlandmark': 'permanentlandmark',
     'sameaspermanent': 'sameaspermanent', 'currentstreet': 'currentstreet', 'currentcity': 'currentcity',
     'currentstate': 'currentstate', 'currentpincode': 'currentpincode', 'currentcountry': 'currentcountry',
     'currentarea': 'currentarea', 'currentlandmark': 'currentlandmark',
+    // SATS Standard Address Fields (Karnataka)
+    'cityvillagetown': 'city/village/town', 'locality': 'locality', 'district': 'district', 'taluka': 'taluka',
     // Status (Common)
     'status': 'isactive', 'isactive': 'isactive',
     // Identity (Common)
