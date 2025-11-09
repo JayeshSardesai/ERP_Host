@@ -937,11 +937,11 @@ function getStudentHeadersRobust() {
   return [
     'studentId', 'firstName', 'middleName', 'lastName', 'email', 'primaryPhone', 'dateOfBirth', 'gender',
     'address', 'city/village/town', 'locality', 'pincode', 'state', 'district', 'taluka',
-    'isActive', 'admissionNumber', 'rollNumber', 'currentClass', 'currentSection', 'academicYear', 'admissionDate',
+    'isActive', 'Enrollment No', 'rollNumber', 'currentClass', 'currentSection', 'academicYear', 'admissionDate',
     'fatherName', 'motherName', 'guardianName', 'fatherPhone', 'motherPhone', 'fatherEmail', 'motherEmail',
     'aadharNumber', 'religion', 'caste', 'category', 'disability', 'isRTECandidate',
     'previousSchoolName', 'previousBoard', 'lastClass', 'tcNumber',
-    'transportMode', 'busRoute', 'pickupPoint', 'feeCategory', 'concessionType', 'concessionPercentage',
+    'transportMode', 'busRoute', 'pickupPoint', 'feeCategory',
     'bankName', 'bankAccountNo', 'bankIFSC', 'medicalConditions', 'allergies', 'specialNeeds', 'profileImage'
   ];
 }
@@ -951,7 +951,7 @@ function validateStudentRowRobust(normalizedRow, rowNumber) {
   const errors = [];
   const requiredKeys = ['firstname', 'lastname', 'email', 'primaryphone', 'dateofbirth', 'gender', 'currentclass', 'currentsection', 'fathername', 'mothername'];
   requiredKeys.forEach(key => { if (!normalizedRow.hasOwnProperty(key) || normalizedRow[key] === undefined || normalizedRow[key] === null || String(normalizedRow[key]).trim() === '') { errors.push({ row: rowNumber, error: `is required`, field: key }); } });
-  // Optional Field Validations... (email, pincode, gender, phone, rte, dates, concession)
+  // Optional Field Validations... (email, pincode, gender, phone, rte, dates)
   if (normalizedRow['email'] && !/\S+@\S+\.\S+/.test(normalizedRow['email'])) { errors.push({ row: rowNumber, error: `Invalid format`, field: 'email' }); }
   const pincode = normalizedRow['pincode']; if (pincode && pincode.trim() !== '' && !/^\d{6}$/.test(pincode)) { errors.push({ row: rowNumber, error: `Invalid format (must be 6 digits if provided)`, field: 'pincode' }); }
   const gender = normalizedRow['gender']?.toLowerCase(); if (gender && gender.trim() !== '' && !['male', 'female', 'other'].includes(gender)) { errors.push({ row: rowNumber, error: `Invalid value (must be 'male', 'female', or 'other' if provided)`, field: 'gender' }); }
@@ -959,7 +959,6 @@ function validateStudentRowRobust(normalizedRow, rowNumber) {
   const rte = normalizedRow['isrtcandidate']?.toLowerCase(); if (rte && rte.trim() !== '' && !['yes', 'no'].includes(rte)) { errors.push({ row: rowNumber, error: `Invalid value (must be 'Yes' or 'No' if provided)`, field: 'isrtcandidate' }); }
   if (normalizedRow['dateofbirth']) { try { parseFlexibleDate(normalizedRow['dateofbirth'], 'Date of Birth'); } catch (e) { errors.push({ row: rowNumber, error: e.message, field: 'dateofbirth' }); } }
   if (normalizedRow['admissiondate']) { try { parseFlexibleDate(normalizedRow['admissiondate'], 'Admission Date'); } catch (e) { errors.push({ row: rowNumber, error: e.message, field: 'admissiondate' }); } }
-  const concPerc = normalizedRow['concessionpercentage']; if (concPerc && (isNaN(Number(concPerc)) || Number(concPerc) < 0 || Number(concPerc) > 100)) { errors.push({ row: rowNumber, error: `must be a number between 0 and 100`, field: 'concessionpercentage' }); }
   return errors;
 }
 
@@ -975,7 +974,6 @@ async function createStudentFromRowRobust(normalizedRow, schoolIdAsObjectId, use
   const isActiveValue = normalizedRow['isactive']?.toLowerCase(); let isActive = true; if (isActiveValue === 'false' || isActiveValue === 'inactive' || isActiveValue === 'no' || isActiveValue === '0') { isActive = false; }
   const isRTECandidateValue = normalizedRow['isrtcandidate']?.toLowerCase(); const isRTECandidate = isRTECandidateValue === 'yes' ? 'Yes' : 'No';
   let pincode = normalizedRow['pincode'] || ''; if (pincode && !/^\d{6}$/.test(pincode)) pincode = '';
-  let concessionPercentage = parseInt(normalizedRow['concessionpercentage'] || '0'); if (isNaN(concessionPercentage) || concessionPercentage < 0 || concessionPercentage > 100) concessionPercentage = 0;
   const firstName = normalizedRow['firstname'] || ''; const lastName = normalizedRow['lastname'] || '';
 
   // Handle profile image if provided
@@ -1044,14 +1042,14 @@ async function createStudentFromRowRobust(normalizedRow, schoolIdAsObjectId, use
     schoolAccess: { joinedDate: finalAdmissionDate, assignedBy: creatingUserIdAsObjectId, status: 'active', accessLevel: 'full' },
     auditTrail: { createdBy: creatingUserIdAsObjectId, createdAt: new Date() },
     studentDetails: {
-      currentClass: normalizedRow['currentclass'] || '', currentSection: normalizedRow['currentsection'] || '', rollNumber: normalizedRow['rollnumber'] || '', admissionNumber: normalizedRow['admissionnumber'] || '',
+      currentClass: normalizedRow['currentclass'] || '', currentSection: normalizedRow['currentsection'] || '', rollNumber: normalizedRow['rollnumber'] || '', enrollmentNo: normalizedRow['enrollment no'] || '',
       admissionDate: finalAdmissionDate, dateOfBirth: finalDateOfBirth, gender: gender, bloodGroup: normalizedRow['bloodgroup'] || '', nationality: normalizedRow['nationality'] || 'Indian',
       religion: normalizedRow['religion'] || '', caste: normalizedRow['caste'] || '', category: normalizedRow['category'] || '',
       fatherName: normalizedRow['fathername'] || '', fatherPhone: normalizedRow['fatherphone'] || '', fatherEmail: normalizedRow['fatheremail']?.toLowerCase() || '',
       motherName: normalizedRow['mothername'] || '', motherPhone: normalizedRow['motherphone'] || '', motherEmail: normalizedRow['motheremail']?.toLowerCase() || '',
       guardianName: normalizedRow['guardianname'] || '', previousSchoolName: normalizedRow['previousschoolname'] || '', previousBoard: normalizedRow['previousboard'] || '',
       lastClass: normalizedRow['lastclass'] || '', tcNumber: normalizedRow['tcnumber'] || '', transportMode: normalizedRow['transportmode'] || '', busRoute: normalizedRow['busroute'] || '', pickupPoint: normalizedRow['pickuppoint'] || '',
-      feeCategory: normalizedRow['feecategory'] || '', concessionType: normalizedRow['concessiontype'] || '', concessionPercentage: concessionPercentage,
+      feeCategory: normalizedRow['feecategory'] || '',
       bankName: normalizedRow['bankname'] || '', bankAccountNo: normalizedRow['bankaccountno'] || '', bankIFSC: normalizedRow['bankifsc'] || '',
       medicalConditions: normalizedRow['medicalconditions'] || '', allergies: normalizedRow['allergies'] || '', specialNeeds: normalizedRow['specialneeds'] || '',
       disability: normalizedRow['disability'] || 'Not Applicable', isRTECandidate: isRTECandidate, academicYear: normalizedRow['academicyear'] || '',
