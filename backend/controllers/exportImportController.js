@@ -742,13 +742,16 @@ function parseFlexibleDate(dateString, fieldName = 'Date') {
 // --- Define Headers (Admin) <--- NEW FUNCTION
 function getAdminHeaders() {
   return [
-    'First Name', 'Middle Name', 'Last Name', 'Email', 'Phone', 'Date of Birth', 
-    'bloodGroup', 'Gender', 'Address', 'City', 'State', 'Pin Code', 'Status', 
-    'TC No', 'Enrollment No', 'Roll Number', 'Class', 'Section', 'Academic Year', 
-    'Father Name', 'Mother Name', 'Guardian Name', 'Father Phone', 'Mother Phone', 
-    'Aadhaar Number', 'Religion', 'Caste', 'Category', 'Disability', 'Is RTE Candidate', 
-    'Previous School', 'Transport Mode', 'Bank Name', 'Account Number', 'IFSC Code', 
-    'profileimage'
+    'userId', 'firstName', 'middleName', 'lastName', 'email', 'primaryPhone',
+    'secondaryPhone', 'whatsappNumber', 'dateOfBirth', 'gender',
+    'permanentStreet', 'permanentArea', 'permanentCity', 'permanentState', 'permanentPincode', 'permanentCountry', 'permanentLandmark',
+    'sameAsPermanent', 'currentStreet', 'currentArea', 'currentCity', 'currentState', 'currentPincode', 'currentCountry', 'currentLandmark',
+    'aadharNumber', 'panNumber', 'joiningDate',
+    'employeeId', 'adminType', 'designation', 'department',
+    'permissions_userManagement', 'permissions_academicManagement', 'permissions_feeManagement', 'permissions_reportGeneration',
+    'permissions_systemSettings', 'permissions_schoolSettings', 'permissions_dataExport', 'permissions_auditLogs',
+    'bankName', 'accountNumber', 'bankIFSC', 'accountHolderName', 'bankBranchName',
+    'bloodGroup', 'nationality', 'religion', 'isActive', 'profileImage'
   ];
 }
 
