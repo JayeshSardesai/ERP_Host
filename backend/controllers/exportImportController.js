@@ -758,10 +758,9 @@ function getTeacherHeaders() {
   return [
     'userId', 'firstName', 'middleName', 'lastName', 'email', 'primaryPhone',
     'secondaryPhone', 'whatsappNumber', 'dateOfBirth', 'gender',
-    'permanentStreet', 'permanentArea', 'permanentCity', 'permanentState', 'permanentPincode', 'permanentCountry', 'permanentLandmark',
-    'sameAsPermanent', 'currentStreet', 'currentArea', 'currentCity', 'currentState', 'currentPincode', 'currentCountry', 'currentLandmark',
-    'aadharNumber', 'panNumber', 'highestQualification',
-    'totalExperience', 'subjects', 'classTeacherOf',
+    'permanentStreet', 'permanentState', 'permanentCountry', 'permanentLandmark',
+    'sameAsPermanent',
+    'totalExperience', 'subjects',
     'employeeId', 'isActive', 'profileImage'
   ];
 }
@@ -772,7 +771,7 @@ function validateTeacherRow(normalizedRow, rowNumber) {
   const requiredKeys = [
     'firstname', 'lastname', 'email', 'primaryphone',
     'dateofbirth', 'gender',
-    'highestqualification', 'totalexperience'
+    'totalexperience'
   ];
   requiredKeys.forEach(key => {
     if (!normalizedRow.hasOwnProperty(key) || normalizedRow[key] === undefined || normalizedRow[key] === null || String(normalizedRow[key]).trim() === '') {
@@ -780,8 +779,6 @@ function validateTeacherRow(normalizedRow, rowNumber) {
     }
   });
   if (normalizedRow['email'] && !/\S+@\S+\.\S+/.test(normalizedRow['email'])) { errors.push({ row: rowNumber, error: `Invalid format`, field: 'email' }); }
-  const pincode = normalizedRow['permanentpincode']; if (pincode && pincode.trim() !== '' && !/^\d{6}$/.test(pincode)) { errors.push({ row: rowNumber, error: `Invalid format (must be 6 digits if provided)`, field: 'permanentpincode' }); }
-  const currentPincode = normalizedRow['currentpincode']; if (currentPincode && currentPincode.trim() !== '' && !/^\d{6}$/.test(currentPincode)) { errors.push({ row: rowNumber, error: `Invalid format (must be 6 digits if provided)`, field: 'currentpincode' }); }
   const gender = normalizedRow['gender']?.toLowerCase(); if (gender && gender.trim() !== '' && !['male', 'female', 'other'].includes(gender)) { errors.push({ row: rowNumber, error: `Invalid value (must be 'male', 'female', or 'other' if provided)`, field: 'gender' }); }
   const phone = normalizedRow['primaryphone']; if (phone && phone.trim() !== '' && !/^\d{7,15}$/.test(phone.replace(/\D/g, ''))) { errors.push({ row: rowNumber, error: `Invalid format (must be 7-15 digits if provided)`, field: 'primaryphone' }); }
   if (normalizedRow['dateofbirth']) { try { parseFlexibleDate(normalizedRow['dateofbirth'], 'Date of Birth'); } catch (e) { errors.push({ row: rowNumber, error: e.message, field: 'dateofbirth' }); } }
@@ -862,8 +859,6 @@ async function createTeacherFromRow(normalizedRow, schoolIdAsObjectId, userId, s
   let gender = normalizedRow['gender']?.toLowerCase(); if (!['male', 'female', 'other'].includes(gender)) gender = 'other';
   const isActiveValue = normalizedRow['isactive']?.toLowerCase(); let isActive = true; if (isActiveValue === 'false' || isActiveValue === 'inactive' || isActiveValue === 'no' || isActiveValue === '0') { isActive = false; }
   const sameAsPermanent = normalizedRow['sameaspermanent']?.toLowerCase() !== 'false';
-  let permanentPincode = normalizedRow['permanentpincode'] || ''; if (permanentPincode && !/^\d{6}$/.test(permanentPincode)) permanentPincode = '';
-  let currentPincode = normalizedRow['currentpincode'] || ''; if (currentPincode && !/^\d{6}$/.test(currentPincode)) currentPincode = '';
   let totalExperience = parseInt(normalizedRow['totalexperience'] || '0'); if (isNaN(totalExperience) || totalExperience < 0) totalExperience = 0;
   const firstName = normalizedRow['firstname'] || ''; const lastName = normalizedRow['lastname'] || '';
 
@@ -880,11 +875,11 @@ async function createTeacherFromRow(normalizedRow, schoolIdAsObjectId, userId, s
     email: email, password: hashedPassword, temporaryPassword: temporaryPassword, passwordChangeRequired: true, role: 'teacher',
     contact: { primaryPhone: normalizedRow['primaryphone'] || '', secondaryPhone: normalizedRow['secondaryphone'] || '', whatsappNumber: normalizedRow['whatsappnumber'] || '', },
     address: {
-      permanent: { street: normalizedRow['permanentstreet'] || '', area: normalizedRow['permanentarea'] || '', city: normalizedRow['permanentcity'] || '', state: normalizedRow['permanentstate'] || '', country: normalizedRow['permanentcountry'] || 'India', pincode: permanentPincode, landmark: normalizedRow['permanentlandmark'] || '' },
-      current: sameAsPermanent ? undefined : { street: normalizedRow['currentstreet'] || '', area: normalizedRow['currentarea'] || '', city: normalizedRow['currentcity'] || '', state: normalizedRow['currentstate'] || '', country: normalizedRow['currentcountry'] || 'India', pincode: currentPincode, landmark: normalizedRow['currentlandmark'] || '' },
+      permanent: { street: normalizedRow['permanentstreet'] || '', state: normalizedRow['permanentstate'] || '', country: normalizedRow['permanentcountry'] || 'India', landmark: normalizedRow['permanentlandmark'] || '' },
+      current: sameAsPermanent ? undefined : undefined,
       sameAsPermanent: sameAsPermanent
     },
-    identity: { aadharNumber: normalizedRow['aadharnumber'] || '', panNumber: normalizedRow['pannumber'] || '' },
+    identity: {},
     profileImage: profileImagePath,
     isActive: isActive, createdAt: new Date(), updatedAt: new Date(),
     schoolAccess: { joinedDate: finalJoiningDate, assignedBy: creatingUserIdAsObjectId, status: 'active', accessLevel: 'full' },
@@ -892,9 +887,8 @@ async function createTeacherFromRow(normalizedRow, schoolIdAsObjectId, userId, s
     teacherDetails: {
       employeeId: normalizedRow['employeeid']?.trim() || userId,
       subjects: normalizedRow['subjects'] ? normalizedRow['subjects'].split(',').map(s => String(s).trim()).filter(Boolean) : [],
-      qualification: normalizedRow['highestqualification']?.trim() || '', experience: totalExperience, joiningDate: finalJoiningDate,
+      qualification: '', experience: totalExperience, joiningDate: finalJoiningDate,
       previousExperience: '', dateOfBirth: finalDateOfBirth, gender: gender,
-      classTeacherOf: normalizedRow['classteacherof']?.trim() || '',
     }
   };
   return newTeacher;
@@ -1136,26 +1130,12 @@ function generateCSV(users, role) {
             case 'dateOfBirth': value = personal.dateOfBirth ? new Date(personal.dateOfBirth).toISOString().split('T')[0] : ''; break;
             case 'gender': value = personal.gender; break;
             case 'permanentStreet': value = addressP.street; break;
-            case 'permanentArea': value = addressP.area; break;
-            case 'permanentCity': value = addressP.city; break;
             case 'permanentState': value = addressP.state; break;
-            case 'permanentPincode': value = addressP.pincode; break;
             case 'permanentCountry': value = addressP.country; break;
             case 'permanentLandmark': value = addressP.landmark; break;
             case 'sameAsPermanent': value = user.address?.sameAsPermanent === false ? 'FALSE' : 'TRUE'; break;
-            case 'currentStreet': value = addressC?.street || ''; break;
-            case 'currentArea': value = addressC?.area || ''; break;
-            case 'currentCity': value = addressC?.city || ''; break;
-            case 'currentState': value = addressC?.state || ''; break;
-            case 'currentPincode': value = addressC?.pincode || ''; break;
-            case 'currentCountry': value = addressC?.country || ''; break;
-            case 'currentLandmark': value = addressC?.landmark || ''; break;
-            case 'aadharNumber': value = personal.aadhaar; break;
-            case 'panNumber': value = personal.pan; break;
-            case 'highestQualification': value = teachingInfo.qualification; break;
             case 'totalExperience': value = teachingInfo.experience; break;
             case 'subjects': value = Array.isArray(teachingInfo.subjects) ? teachingInfo.subjects.join(', ') : ''; break;
-            case 'classTeacherOf': value = Array.isArray(teachingInfo.classes) ? teachingInfo.classes.join(', ') : ''; break;
             case 'employeeId': value = teachingInfo.employeeId; break;
             case 'isActive': value = user.isActive === false ? 'false' : 'true'; break;
             case 'profileImage': value = user.profileImage || ''; break;
@@ -1328,10 +1308,8 @@ function formatUserForExport(user, role) {
     Object.assign(formatted, {
       dateOfBirth: user.teacherDetails.dateOfBirth,
       gender: user.teacherDetails.gender,
-      highestQualification: user.teacherDetails.qualification,
       totalExperience: user.teacherDetails.experience,
       subjects: Array.isArray(user.teacherDetails.subjects) ? user.teacherDetails.subjects.join(', ') : '',
-      classTeacherOf: user.teacherDetails.classTeacherOf,
       employeeId: user.teacherDetails.employeeId,
     });
   } else if (role === 'admin' && user.adminDetails) { // <--- NEW: Admin Export Format
