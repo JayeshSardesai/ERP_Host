@@ -751,7 +751,7 @@ function getAdminHeaders() {
     'employeeId', 'designation', 'qualification', 'experience',
     // Address Information
     'permanentStreet', 'permanentArea', 'permanentCity', 'permanentState', 'permanentPincode', 'permanentCountry',
-    'sameAsPermanent', 'currentStreet', 'currentArea', 'currentCity', 'currentState', 'currentPincode', 'currentCountry',
+    'sameAsPermanent',
     // System
     'isActive', 'profileImage'
   ];
@@ -803,7 +803,6 @@ function validateAdminRow(normalizedRow, rowNumber) {
   });
   if (normalizedRow['email'] && !/\S+@\S+\.\S+/.test(normalizedRow['email'])) { errors.push({ row: rowNumber, error: `Invalid format`, field: 'email' }); }
   const pincode = normalizedRow['permanentpincode']; if (pincode && pincode.trim() !== '' && !/^\d{6}$/.test(pincode)) { errors.push({ row: rowNumber, error: `Invalid format (must be 6 digits if provided)`, field: 'permanentpincode' }); }
-  const currentPincode = normalizedRow['currentpincode']; if (currentPincode && currentPincode.trim() !== '' && !/^\d{6}$/.test(currentPincode)) { errors.push({ row: rowNumber, error: `Invalid format (must be 6 digits if provided)`, field: 'currentpincode' }); }
   const gender = normalizedRow['gender']?.toLowerCase(); if (gender && gender.trim() !== '' && !['male', 'female', 'other'].includes(gender)) { errors.push({ row: rowNumber, error: `Invalid value (must be 'male', 'female', or 'other' if provided)`, field: 'gender' }); }
   const phone = normalizedRow['primaryphone']; if (phone && phone.trim() !== '' && !/^\d{7,15}$/.test(phone.replace(/\D/g, ''))) { errors.push({ row: rowNumber, error: `Invalid format (must be 7-15 digits if provided)`, field: 'primaryphone' }); }
   if (normalizedRow['dateofbirth']) { try { parseFlexibleDate(normalizedRow['dateofbirth'], 'Date of Birth'); } catch (e) { errors.push({ row: rowNumber, error: e.message, field: 'dateofbirth' }); } }
@@ -820,7 +819,6 @@ async function createAdminFromRow(normalizedRow, schoolIdAsObjectId, userId, sch
   const isActiveValue = normalizedRow['isactive']?.toLowerCase(); let isActive = true; if (isActiveValue === 'false' || isActiveValue === 'inactive' || isActiveValue === 'no' || isActiveValue === '0') { isActive = false; }
   const sameAsPermanent = normalizedRow['sameaspermanent']?.toLowerCase() !== 'false';
   let permanentPincode = normalizedRow['permanentpincode'] || ''; if (permanentPincode && !/^\d{6}$/.test(permanentPincode)) permanentPincode = '';
-  let currentPincode = normalizedRow['currentpincode'] || ''; if (currentPincode && !/^\d{6}$/.test(currentPincode)) currentPincode = '';
   let experience = parseInt(normalizedRow['experience'] || '0'); if (isNaN(experience) || experience < 0) experience = 0;
   const firstName = normalizedRow['firstname'] || ''; const lastName = normalizedRow['lastname'] || '';
 
@@ -838,7 +836,7 @@ async function createAdminFromRow(normalizedRow, schoolIdAsObjectId, userId, sch
     contact: { primaryPhone: normalizedRow['primaryphone'] || '' },
     address: {
       permanent: { street: normalizedRow['permanentstreet'] || '', area: normalizedRow['permanentarea'] || '', city: normalizedRow['permanentcity'] || '', state: normalizedRow['permanentstate'] || '', country: normalizedRow['permanentcountry'] || 'India', pincode: permanentPincode },
-      current: sameAsPermanent ? undefined : { street: normalizedRow['currentstreet'] || '', area: normalizedRow['currentarea'] || '', city: normalizedRow['currentcity'] || '', state: normalizedRow['currentstate'] || '', country: normalizedRow['currentcountry'] || 'India', pincode: currentPincode },
+      current: undefined,
       sameAsPermanent: sameAsPermanent
     },
     identity: {},
@@ -1200,12 +1198,6 @@ function generateCSV(users, role) {
             case 'permanentPincode': value = addressP.pincode; break;
             case 'permanentCountry': value = addressP.country; break;
             case 'sameAsPermanent': value = user.address?.sameAsPermanent === false ? 'FALSE' : 'TRUE'; break;
-            case 'currentStreet': value = addressC?.street || ''; break;
-            case 'currentArea': value = addressC?.area || ''; break;
-            case 'currentCity': value = addressC?.city || ''; break;
-            case 'currentState': value = addressC?.state || ''; break;
-            case 'currentPincode': value = addressC?.pincode || ''; break;
-            case 'currentCountry': value = addressC?.country || ''; break;
             // System
             case 'isActive': value = user.isActive === false ? 'false' : 'true'; break;
             case 'profileImage': value = user.profileImage || ''; break;
