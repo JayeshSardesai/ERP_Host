@@ -654,6 +654,8 @@ const ManageUsers: React.FC = () => {
 
       const qualification = teacherDetails?.highestQualification || formData.qualification;
       const experience = teacherDetails?.totalExperience || Number(formData.experience);
+      const gender = teacherDetails?.gender || formData.gender;
+      const joiningDate = teacherDetails?.joiningDate || formData.joiningDate;
 
       if (!qualification || qualification.trim() === '') {
         errors.push('Highest qualification is required for teachers');
@@ -661,18 +663,18 @@ const ManageUsers: React.FC = () => {
       if (experience === undefined || experience < 0) {
         errors.push('Total experience is required for teachers (minimum 0 years)');
       }
+      if (!gender || gender.trim() === '') {
+        errors.push('Gender is required for teachers');
+      }
+      if (!joiningDate || joiningDate.trim() === '') {
+        errors.push('Joining date is required for teachers');
+      }
       // Subjects are now optional - no validation needed
 
       // Employee ID validation if provided
       const employeeId = teacherDetails?.employeeId || formData.employeeId;
       if (employeeId && employeeId.trim() === '') {
         errors.push('Employee ID cannot be empty if provided');
-      }
-
-      // IFSC validation for teacher banking
-      const bankIFSC = teacherDetails?.bankIFSC || formData.bankIFSC;
-      if (bankIFSC && !/^[A-Z]{4}0[A-Z0-9]{6}$/.test(bankIFSC)) {
-        errors.push('Bank IFSC code must be in valid format (e.g., SBIN0012345)');
       }
 
     } else if (formData.role === 'admin') {

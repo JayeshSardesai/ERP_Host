@@ -760,8 +760,7 @@ function getTeacherHeaders() {
   return [
     'userId', 'firstName', 'middleName', 'lastName', 'email', 'primaryPhone',
     'employeeId', 'dateOfBirth', 'qualification', 'experience', 'subjects',
-    'specialization', 'joiningDate', 'gender', 'bloodGroup', 'nationality', 
-    'religion', 'bankName', 'bankAccountNo', 'bankIFSC', 'isActive', 'profileImage'
+    'specialization', 'joiningDate', 'gender', 'religion', 'isActive', 'profileImage'
   ];
 }
 
@@ -833,10 +832,6 @@ function validateTeacherRow(normalizedRow, rowNumber) {
   const exp = normalizedRow['experience']; 
   if (exp && isNaN(Number(exp))) { 
     errors.push({ row: rowNumber, error: `must be a number`, field: 'experience' }); 
-  }
-  const bankIFSC = normalizedRow['bankifsc'];
-  if (bankIFSC && bankIFSC.trim() !== '' && !/^[A-Z]{4}0[A-Z0-9]{6}$/.test(bankIFSC)) {
-    errors.push({ row: rowNumber, error: `Invalid format (e.g., SBIN0012345)`, field: 'bankifsc' });
   }
   return errors;
 }
@@ -1022,12 +1017,12 @@ async function createTeacherFromRow(normalizedRow, schoolIdAsObjectId, userId, s
       previousExperience: '', 
       dateOfBirth: finalDateOfBirth, 
       gender: gender,
-      bloodGroup: normalizedRow['bloodgroup']?.trim() || '', 
-      nationality: normalizedRow['nationality']?.trim() || 'Indian', 
+      bloodGroup: '', 
+      nationality: 'Indian', 
       religion: normalizedRow['religion']?.trim() || '',
-      bankName: normalizedRow['bankname']?.trim() || '', 
-      bankAccountNo: normalizedRow['bankaccountno']?.trim() || '', 
-      bankIFSC: normalizedRow['bankifsc']?.trim() || '',
+      bankName: '', 
+      bankAccountNo: '', 
+      bankIFSC: '',
       classTeacherOf: '',
     }
   };
@@ -1271,14 +1266,12 @@ function generateCSV(users, role) {
             case 'experience': value = teacherDetails.experience || 0; break;
             case 'subjects': value = Array.isArray(teacherDetails.subjects) ? teacherDetails.subjects.join(', ') : ''; break;
             case 'specialization': value = teacherDetails.specialization || ''; break;
-            case 'joiningDate': value = teacherDetails.joiningDate ? new Date(teacherDetails.joiningDate).toISOString().split('T')[0] : ''; break;
-            case 'gender': value = teacherDetails.gender || ''; break;
-            case 'bloodGroup': value = teacherDetails.bloodGroup || ''; break;
-            case 'nationality': value = teacherDetails.nationality || ''; break;
+            case 'joiningDate': 
+              const joiningDate = teacherDetails.joiningDate || user.schoolAccess?.joinedDate;
+              value = joiningDate ? new Date(joiningDate).toISOString().split('T')[0] : ''; 
+              break;
+            case 'gender': value = teacherDetails.gender || user.gender || ''; break;
             case 'religion': value = teacherDetails.religion || ''; break;
-            case 'bankName': value = teacherDetails.bankName || ''; break;
-            case 'bankAccountNo': value = teacherDetails.bankAccountNo || ''; break;
-            case 'bankIFSC': value = teacherDetails.bankIFSC || ''; break;
             case 'isActive': value = user.isActive === false ? 'false' : 'true'; break;
             case 'profileImage': value = user.profileImage || user.profilePicture || ''; break;
             default: value = '';
