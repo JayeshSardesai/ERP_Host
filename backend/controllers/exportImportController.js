@@ -742,16 +742,13 @@ function parseFlexibleDate(dateString, fieldName = 'Date') {
 // --- Define Headers (Admin) <--- NEW FUNCTION
 function getAdminHeaders() {
   return [
-    'userId', 'firstName', 'middleName', 'lastName', 'email', 'primaryPhone',
-    'secondaryPhone', 'whatsappNumber', 'dateOfBirth', 'gender',
-    'permanentStreet', 'permanentArea', 'permanentCity', 'permanentState', 'permanentPincode', 'permanentCountry', 'permanentLandmark',
-    'sameAsPermanent', 'currentStreet', 'currentArea', 'currentCity', 'currentState', 'currentPincode', 'currentCountry', 'currentLandmark',
-    'aadharNumber', 'panNumber', 'joiningDate',
-    'employeeId', 'adminType', 'designation', 'department',
-    'permissions_userManagement', 'permissions_academicManagement', 'permissions_feeManagement', 'permissions_reportGeneration',
-    'permissions_systemSettings', 'permissions_schoolSettings', 'permissions_dataExport', 'permissions_auditLogs',
-    'bankName', 'accountNumber', 'bankIFSC', 'accountHolderName', 'bankBranchName',
-    'bloodGroup', 'nationality', 'religion', 'isActive', 'profileImage'
+    'First Name', 'Middle Name', 'Last Name', 'Email', 'Phone', 'Date of Birth', 
+    'bloodGroup', 'Gender', 'Address', 'City', 'State', 'Pin Code', 'Status', 
+    'TC No', 'Enrollment No', 'Roll Number', 'Class', 'Section', 'Academic Year', 
+    'Father Name', 'Mother Name', 'Guardian Name', 'Father Phone', 'Mother Phone', 
+    'Aadhaar Number', 'Religion', 'Caste', 'Category', 'Disability', 'Is RTE Candidate', 
+    'Previous School', 'Transport Mode', 'Bank Name', 'Account Number', 'IFSC Code', 
+    'profileimage'
   ];
 }
 
@@ -935,13 +932,11 @@ async function createTeacherFromRow(normalizedRow, schoolIdAsObjectId, userId, s
   };
   return newTeacher;
 }
-
 // --- Define Robust Headers (Student) ---
 function getStudentHeadersRobust() {
   return [
     'studentId', 'firstName', 'middleName', 'lastName', 'email', 'primaryPhone', 'dateOfBirth', 'gender',
-    'permanentStreet', 'permanentArea', 'permanentCity', 'permanentState', 'permanentPincode', 'permanentCountry', 'permanentLandmark',
-    'sameAsPermanent', 'currentStreet', 'currentArea', 'currentCity', 'currentState', 'currentPincode', 'currentCountry', 'currentLandmark',
+    'address', 'city/village/town', 'locality', 'pincode', 'state', 'district', 'taluka',
     'isActive', 'admissionNumber', 'rollNumber', 'currentClass', 'currentSection', 'academicYear', 'admissionDate',
     'fatherName', 'motherName', 'guardianName', 'fatherPhone', 'motherPhone', 'fatherEmail', 'motherEmail',
     'aadharNumber', 'religion', 'caste', 'category', 'disability', 'isRTECandidate',
@@ -958,8 +953,7 @@ function validateStudentRowRobust(normalizedRow, rowNumber) {
   requiredKeys.forEach(key => { if (!normalizedRow.hasOwnProperty(key) || normalizedRow[key] === undefined || normalizedRow[key] === null || String(normalizedRow[key]).trim() === '') { errors.push({ row: rowNumber, error: `is required`, field: key }); } });
   // Optional Field Validations... (email, pincode, gender, phone, rte, dates, concession)
   if (normalizedRow['email'] && !/\S+@\S+\.\S+/.test(normalizedRow['email'])) { errors.push({ row: rowNumber, error: `Invalid format`, field: 'email' }); }
-  const pincode = normalizedRow['permanentpincode']; if (pincode && pincode.trim() !== '' && !/^\d{6}$/.test(pincode)) { errors.push({ row: rowNumber, error: `Invalid format (must be 6 digits if provided)`, field: 'permanentpincode' }); }
-  const currentPincode = normalizedRow['currentpincode']; if (currentPincode && currentPincode.trim() !== '' && !/^\d{6}$/.test(currentPincode)) { errors.push({ row: rowNumber, error: `Invalid format (must be 6 digits if provided)`, field: 'currentpincode' }); }
+  const pincode = normalizedRow['pincode']; if (pincode && pincode.trim() !== '' && !/^\d{6}$/.test(pincode)) { errors.push({ row: rowNumber, error: `Invalid format (must be 6 digits if provided)`, field: 'pincode' }); }
   const gender = normalizedRow['gender']?.toLowerCase(); if (gender && gender.trim() !== '' && !['male', 'female', 'other'].includes(gender)) { errors.push({ row: rowNumber, error: `Invalid value (must be 'male', 'female', or 'other' if provided)`, field: 'gender' }); }
   const phone = normalizedRow['primaryphone']; if (phone && phone.trim() !== '' && !/^\d{7,15}$/.test(phone.replace(/\D/g, ''))) { errors.push({ row: rowNumber, error: `Invalid format (must be 7-15 digits if provided)`, field: 'primaryphone' }); }
   const rte = normalizedRow['isrtcandidate']?.toLowerCase(); if (rte && rte.trim() !== '' && !['yes', 'no'].includes(rte)) { errors.push({ row: rowNumber, error: `Invalid value (must be 'Yes' or 'No' if provided)`, field: 'isrtcandidate' }); }
@@ -980,8 +974,7 @@ async function createStudentFromRowRobust(normalizedRow, schoolIdAsObjectId, use
   let gender = normalizedRow['gender']?.toLowerCase(); if (!['male', 'female', 'other'].includes(gender)) gender = 'other';
   const isActiveValue = normalizedRow['isactive']?.toLowerCase(); let isActive = true; if (isActiveValue === 'false' || isActiveValue === 'inactive' || isActiveValue === 'no' || isActiveValue === '0') { isActive = false; }
   const isRTECandidateValue = normalizedRow['isrtcandidate']?.toLowerCase(); const isRTECandidate = isRTECandidateValue === 'yes' ? 'Yes' : 'No';
-  let permanentPincode = normalizedRow['permanentpincode'] || ''; if (permanentPincode && !/^\d{6}$/.test(permanentPincode)) permanentPincode = '';
-  let currentPincode = normalizedRow['currentpincode'] || ''; if (currentPincode && !/^\d{6}$/.test(currentPincode)) currentPincode = '';
+  let pincode = normalizedRow['pincode'] || ''; if (pincode && !/^\d{6}$/.test(pincode)) pincode = '';
   let concessionPercentage = parseInt(normalizedRow['concessionpercentage'] || '0'); if (isNaN(concessionPercentage) || concessionPercentage < 0 || concessionPercentage > 100) concessionPercentage = 0;
   const firstName = normalizedRow['firstname'] || ''; const lastName = normalizedRow['lastname'] || '';
 
@@ -1033,8 +1026,17 @@ async function createStudentFromRowRobust(normalizedRow, schoolIdAsObjectId, use
     email: email, password: hashedPassword, temporaryPassword: temporaryPassword, passwordChangeRequired: true, role: 'student',
     contact: { primaryPhone: normalizedRow['primaryphone'] || '', secondaryPhone: normalizedRow['secondaryphone'] || '', whatsappNumber: normalizedRow['whatsappnumber'] || '', },
     address: {
-      permanent: { street: normalizedRow['permanentstreet'] || '', area: normalizedRow['permanentarea'] || '', city: normalizedRow['permanentcity'] || '', state: normalizedRow['permanentstate'] || '', country: normalizedRow['permanentcountry'] || 'India', pincode: permanentPincode, landmark: normalizedRow['permanentlandmark'] || '' },
-      current: undefined, sameAsPermanent: true // Assuming sameAsPermanent=true for student import simplicity
+      permanent: { 
+        street: normalizedRow['address'] || '', 
+        area: normalizedRow['locality'] || '', 
+        city: normalizedRow['city/village/town'] || '', 
+        district: normalizedRow['district'] || '',
+        taluka: normalizedRow['taluka'] || '',
+        state: normalizedRow['state'] || '', 
+        country: 'India', 
+        pincode: pincode
+      },
+      current: undefined, sameAsPermanent: true
     },
     identity: { aadharNumber: normalizedRow['aadharnumber'] || '', panNumber: normalizedRow['pannumber'] || '' },
     profileImage: profileImagePath || null, // Ensure null instead of empty string
