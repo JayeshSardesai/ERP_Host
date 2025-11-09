@@ -234,8 +234,8 @@ exports.importUsers = async (req, res) => {
           if (firstRowKeys.has('currentclass') && firstRowKeys.has('currentsection') && firstRowKeys.has('fathername')) {
             inferredRole = 'student';
           }
-          // 2. Then check for teacher (simplified: has employeeId but not student/admin specific fields)
-          else if (firstRowKeys.has('employeeid') && !firstRowKeys.has('currentclass') && !firstRowKeys.has('admintype')) {
+          // 2. Then check for teacher
+          else if (firstRowKeys.has('qualification') && firstRowKeys.has('experience') && firstRowKeys.has('subjects')) {
             inferredRole = 'teacher';
           }
           // 3. Then check for admin
@@ -243,7 +243,7 @@ exports.importUsers = async (req, res) => {
             inferredRole = 'admin';
           }
           else {
-            throw new Error("Could not infer user role (student/teacher/admin) from CSV columns. Ensure headers like 'currentclass'/'fathername' (for students) OR 'employeeId' (for teachers) OR 'admintype'/'designation' (for admins) are present.");
+            throw new Error("Could not infer user role (student/teacher/admin) from CSV columns. Ensure headers like 'currentclass'/'fathername' (for students) OR 'qualification'/'experience'/'subjects' (for teachers) OR 'admintype'/'designation' (for admins) are present.");
           }
           console.log(`Inferred Role: ${inferredRole}`);
         }
@@ -759,7 +759,9 @@ function getAdminHeaders() {
 function getTeacherHeaders() {
   return [
     'userId', 'firstName', 'middleName', 'lastName', 'email', 'primaryPhone',
-    'employeeId', 'dateOfBirth', 'isActive', 'profileImage'
+    'employeeId', 'dateOfBirth', 'qualification', 'experience', 'subjects',
+    'specialization', 'joiningDate', 'gender', 'bloodGroup', 'nationality', 
+    'religion', 'bankName', 'bankAccountNo', 'bankIFSC', 'isActive', 'profileImage'
   ];
 }
 
@@ -793,7 +795,9 @@ function validateAdminRow(normalizedRow, rowNumber) {
 function validateTeacherRow(normalizedRow, rowNumber) {
   const errors = [];
   const requiredKeys = [
-    'firstname', 'lastname', 'primaryphone', 'dateofbirth'
+    'firstname', 'lastname', 'email', 'primaryphone',
+    'dateofbirth', 'gender', 'joiningdate',
+    'qualification', 'experience', 'subjects'
   ];
   requiredKeys.forEach(key => {
     if (!normalizedRow.hasOwnProperty(key) || normalizedRow[key] === undefined || normalizedRow[key] === null || String(normalizedRow[key]).trim() === '') {
@@ -801,9 +805,16 @@ function validateTeacherRow(normalizedRow, rowNumber) {
     }
   });
   // Optional Field Validations
+  if (normalizedRow['email'] && !/\S+@\S+\.\S+/.test(normalizedRow['email'])) { 
+    errors.push({ row: rowNumber, error: `Invalid format`, field: 'email' }); 
+  }
   const phone = normalizedRow['primaryphone']; 
   if (phone && phone.trim() !== '' && !/^\d{7,15}$/.test(phone.replace(/\D/g, ''))) { 
     errors.push({ row: rowNumber, error: `Invalid format (must be 7-15 digits if provided)`, field: 'primaryphone' }); 
+  }
+  const gender = normalizedRow['gender']?.toLowerCase(); 
+  if (gender && gender.trim() !== '' && !['male', 'female', 'other'].includes(gender)) { 
+    errors.push({ row: rowNumber, error: `Invalid value (must be 'male', 'female', or 'other')`, field: 'gender' }); 
   }
   if (normalizedRow['dateofbirth']) { 
     try { 
@@ -811,6 +822,21 @@ function validateTeacherRow(normalizedRow, rowNumber) {
     } catch (e) { 
       errors.push({ row: rowNumber, error: e.message, field: 'dateofbirth' }); 
     } 
+  }
+  if (normalizedRow['joiningdate']) { 
+    try { 
+      parseFlexibleDate(normalizedRow['joiningdate'], 'Joining Date'); 
+    } catch (e) { 
+      errors.push({ row: rowNumber, error: e.message, field: 'joiningdate' }); 
+    } 
+  }
+  const exp = normalizedRow['experience']; 
+  if (exp && isNaN(Number(exp))) { 
+    errors.push({ row: rowNumber, error: `must be a number`, field: 'experience' }); 
+  }
+  const bankIFSC = normalizedRow['bankifsc'];
+  if (bankIFSC && bankIFSC.trim() !== '' && !/^[A-Z]{4}0[A-Z0-9]{6}$/.test(bankIFSC)) {
+    errors.push({ row: rowNumber, error: `Invalid format (e.g., SBIN0012345)`, field: 'bankifsc' });
   }
   return errors;
 }
@@ -881,11 +907,17 @@ async function createAdminFromRow(normalizedRow, schoolIdAsObjectId, userId, sch
 
 // --- Helper to create Teacher Data Object ---
 async function createTeacherFromRow(normalizedRow, schoolIdAsObjectId, userId, schoolCode, creatingUserIdAsObjectId) {
+  const email = normalizedRow['email'];
   const finalDateOfBirth = parseFlexibleDate(normalizedRow['dateofbirth'], 'Date of Birth'); 
   if (!finalDateOfBirth) throw new Error('Date of Birth is required and could not be parsed.');
+  const finalJoiningDate = parseFlexibleDate(normalizedRow['joiningdate'], 'Joining Date'); 
+  if (!finalJoiningDate) throw new Error('Joining Date is required and could not be parsed.');
   
   let temporaryPassword = generateRandomPassword(8); 
   const hashedPassword = await bcrypt.hash(temporaryPassword, 10);
+  
+  let gender = normalizedRow['gender']?.toLowerCase(); 
+  if (!['male', 'female', 'other'].includes(gender)) gender = 'other';
   
   const isActiveValue = normalizedRow['isactive']?.toLowerCase(); 
   let isActive = true; 
@@ -893,10 +925,12 @@ async function createTeacherFromRow(normalizedRow, schoolIdAsObjectId, userId, s
     isActive = false; 
   }
   
+  let totalExperience = parseInt(normalizedRow['experience'] || '0'); 
+  if (isNaN(totalExperience) || totalExperience < 0) totalExperience = 0;
+  
   const firstName = normalizedRow['firstname'] || ''; 
   const lastName = normalizedRow['lastname'] || '';
   const middleName = normalizedRow['middlename'] || '';
-  const email = normalizedRow['email'] || `${userId}@school.edu`; // Use provided email or generate default
 
   // Handle profile image if provided
   let profileImagePath = '';
@@ -972,7 +1006,7 @@ async function createTeacherFromRow(normalizedRow, schoolIdAsObjectId, userId, s
     createdAt: new Date(), 
     updatedAt: new Date(),
     schoolAccess: { 
-      joinedDate: new Date(), 
+      joinedDate: finalJoiningDate, 
       assignedBy: creatingUserIdAsObjectId, 
       status: 'active', 
       accessLevel: 'full' 
@@ -980,20 +1014,20 @@ async function createTeacherFromRow(normalizedRow, schoolIdAsObjectId, userId, s
     auditTrail: { createdBy: creatingUserIdAsObjectId, createdAt: new Date() },
     teacherDetails: {
       employeeId: normalizedRow['employeeid']?.trim() || userId,
-      subjects: [],
-      qualification: '', 
-      experience: 0, 
-      joiningDate: new Date(),
-      specialization: '', 
+      subjects: normalizedRow['subjects'] ? normalizedRow['subjects'].split(',').map(s => String(s).trim()).filter(Boolean) : [],
+      qualification: normalizedRow['qualification']?.trim() || '', 
+      experience: totalExperience, 
+      joiningDate: finalJoiningDate,
+      specialization: normalizedRow['specialization']?.trim() || '', 
       previousExperience: '', 
       dateOfBirth: finalDateOfBirth, 
-      gender: 'other',
-      bloodGroup: '', 
-      nationality: 'Indian', 
-      religion: '',
-      bankName: '', 
-      bankAccountNo: '', 
-      bankIFSC: '',
+      gender: gender,
+      bloodGroup: normalizedRow['bloodgroup']?.trim() || '', 
+      nationality: normalizedRow['nationality']?.trim() || 'Indian', 
+      religion: normalizedRow['religion']?.trim() || '',
+      bankName: normalizedRow['bankname']?.trim() || '', 
+      bankAccountNo: normalizedRow['bankaccountno']?.trim() || '', 
+      bankIFSC: normalizedRow['bankifsc']?.trim() || '',
       classTeacherOf: '',
     }
   };
@@ -1230,10 +1264,21 @@ function generateCSV(users, role) {
             case 'primaryPhone': value = contact.primaryPhone; break;
             case 'employeeId': value = teacherDetails.employeeId || user.userId; break;
             case 'dateOfBirth': 
-              // Try multiple possible locations for dateOfBirth
-              const dob = teacherDetails.dateOfBirth || user.dateOfBirth || teacherDetails.personal?.dateOfBirth;
+              const dob = teacherDetails.dateOfBirth || user.dateOfBirth;
               value = dob ? new Date(dob).toISOString().split('T')[0] : ''; 
               break;
+            case 'qualification': value = teacherDetails.qualification || ''; break;
+            case 'experience': value = teacherDetails.experience || 0; break;
+            case 'subjects': value = Array.isArray(teacherDetails.subjects) ? teacherDetails.subjects.join(', ') : ''; break;
+            case 'specialization': value = teacherDetails.specialization || ''; break;
+            case 'joiningDate': value = teacherDetails.joiningDate ? new Date(teacherDetails.joiningDate).toISOString().split('T')[0] : ''; break;
+            case 'gender': value = teacherDetails.gender || ''; break;
+            case 'bloodGroup': value = teacherDetails.bloodGroup || ''; break;
+            case 'nationality': value = teacherDetails.nationality || ''; break;
+            case 'religion': value = teacherDetails.religion || ''; break;
+            case 'bankName': value = teacherDetails.bankName || ''; break;
+            case 'bankAccountNo': value = teacherDetails.bankAccountNo || ''; break;
+            case 'bankIFSC': value = teacherDetails.bankIFSC || ''; break;
             case 'isActive': value = user.isActive === false ? 'false' : 'true'; break;
             case 'profileImage': value = user.profileImage || user.profilePicture || ''; break;
             default: value = '';

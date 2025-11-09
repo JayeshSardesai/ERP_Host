@@ -662,10 +662,9 @@ const ManageUsers: React.FC = () => {
       if (experience === undefined || experience < 0) {
         errors.push('Total experience is required for teachers (minimum 0 years)');
       }
-      // Subjects are optional for teachers to allow flexible user creation
-      // if (!subjects || subjects.length === 0 || (Array.isArray(subjects) && subjects.filter(s => s.trim()).length === 0)) {
-      //   errors.push('At least one subject is required for teachers');
-      // }
+      if (!subjects || subjects.length === 0 || (Array.isArray(subjects) && subjects.filter(s => s.trim()).length === 0)) {
+        errors.push('At least one subject is required for teachers');
+      }
 
       // Employee ID validation if provided
       const employeeId = teacherDetails?.employeeId || formData.employeeId;
