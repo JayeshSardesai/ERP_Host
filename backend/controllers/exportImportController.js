@@ -1108,6 +1108,7 @@ function generateCSV(users, role) {
     headers = getTeacherHeaders();
     rows = users.map(user => {
       const teachingInfo = user.teachingInfo || {};
+      const teacherDetails = user.teacherDetails || {};
       const personal = user.personal || {};
       const name = user.name || {};
       const contact = user.contact || {};
@@ -1125,15 +1126,21 @@ function generateCSV(users, role) {
             case 'lastName': value = name.lastName; break;
             case 'email': value = user.email; break;
             case 'primaryPhone': value = contact.primaryPhone; break;
-            case 'dateOfBirth': value = personal.dateOfBirth ? new Date(personal.dateOfBirth).toISOString().split('T')[0] : ''; break;
-            case 'gender': value = personal.gender; break;
+            case 'dateOfBirth': 
+              value = teacherDetails.dateOfBirth ? new Date(teacherDetails.dateOfBirth).toISOString().split('T')[0] : 
+                      (personal.dateOfBirth ? new Date(personal.dateOfBirth).toISOString().split('T')[0] : ''); 
+              break;
+            case 'gender': value = teacherDetails.gender || personal.gender || ''; break;
             case 'permanentStreet': value = addressP.street; break;
             case 'permanentState': value = addressP.state; break;
             case 'permanentCountry': value = addressP.country; break;
             case 'sameAsPermanent': value = user.address?.sameAsPermanent === false ? 'FALSE' : 'TRUE'; break;
-            case 'totalExperience': value = teachingInfo.experience; break;
-            case 'subjects': value = Array.isArray(teachingInfo.subjects) ? teachingInfo.subjects.join(', ') : ''; break;
-            case 'employeeId': value = teachingInfo.employeeId; break;
+            case 'totalExperience': value = teacherDetails.experience || teachingInfo.experience || ''; break;
+            case 'subjects': 
+              value = Array.isArray(teacherDetails.subjects) ? teacherDetails.subjects.join(', ') : 
+                      (Array.isArray(teachingInfo.subjects) ? teachingInfo.subjects.join(', ') : ''); 
+              break;
+            case 'employeeId': value = teacherDetails.employeeId || teachingInfo.employeeId || ''; break;
             case 'isActive': value = user.isActive === false ? 'false' : 'true'; break;
             case 'profileImage': value = user.profileImage || ''; break;
             default: value = '';
