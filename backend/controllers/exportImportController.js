@@ -181,9 +181,9 @@ exports.importUsers = async (req, res) => {
 
     // Teacher Specific
     'secondaryphone': 'secondaryphone', 'whatsappnumber': 'whatsappnumber', 'pannumber': 'pannumber',
-    'joiningdate': 'joiningdate', 'highestqualification': 'highestqualification', 'specialization': 'specialization',
+    'highestqualification': 'highestqualification',
     'totalexperience': 'totalexperience', 'subjects': 'subjects', 'classteacherof': 'classteacherof',
-    'employeeid': 'employeeid', 'bloodgroup': 'bloodgroup', 'nationality': 'nationality',
+    'employeeid': 'employeeid',
 
     // Admin Specific <--- NEW: Admin Fields
     'admintype': 'admintype', 'adminlevel': 'admintype', 'designation': 'designation', 'department': 'department',
@@ -754,54 +754,24 @@ function getAdminHeaders() {
   ];
 }
 
-
-// --- Define Headers (Teacher) ---
 function getTeacherHeaders() {
   return [
     'userId', 'firstName', 'middleName', 'lastName', 'email', 'primaryPhone',
     'secondaryPhone', 'whatsappNumber', 'dateOfBirth', 'gender',
     'permanentStreet', 'permanentArea', 'permanentCity', 'permanentState', 'permanentPincode', 'permanentCountry', 'permanentLandmark',
     'sameAsPermanent', 'currentStreet', 'currentArea', 'currentCity', 'currentState', 'currentPincode', 'currentCountry', 'currentLandmark',
-    'aadharNumber', 'panNumber', 'joiningDate', 'highestQualification',
-    'specialization', 'totalExperience', 'subjects', 'classTeacherOf',
-    'employeeId', 'bankName', 'bankAccountNo', 'bankIFSC',
-    'bloodGroup', 'nationality', 'religion', 'isActive', 'profileImage'
+    'aadharNumber', 'panNumber', 'highestQualification',
+    'totalExperience', 'subjects', 'classTeacherOf',
+    'employeeId', 'isActive', 'profileImage'
   ];
 }
-
-
-// --- Validation function for Admin <--- NEW FUNCTION
-function validateAdminRow(normalizedRow, rowNumber) {
-  const errors = [];
-  const requiredKeys = [
-    'firstname', 'lastname', 'email', 'primaryphone',
-    'dateofbirth', 'gender', 'joiningdate',
-    'admintype', 'designation'
-  ];
-  requiredKeys.forEach(key => {
-    if (!normalizedRow.hasOwnProperty(key) || normalizedRow[key] === undefined || normalizedRow[key] === null || String(normalizedRow[key]).trim() === '') {
-      errors.push({ row: rowNumber, error: `is required`, field: key });
-    }
-  });
-  // Optional Field Validations...
-  if (normalizedRow['email'] && !/\S+@\S+\.\S+/.test(normalizedRow['email'])) { errors.push({ row: rowNumber, error: `Invalid format`, field: 'email' }); }
-  const pincode = normalizedRow['permanentpincode']; if (pincode && pincode.trim() !== '' && !/^\d{6}$/.test(pincode)) { errors.push({ row: rowNumber, error: `Invalid format (must be 6 digits if provided)`, field: 'permanentpincode' }); }
-  const currentPincode = normalizedRow['currentpincode']; if (currentPincode && currentPincode.trim() !== '' && !/^\d{6}$/.test(currentPincode)) { errors.push({ row: rowNumber, error: `Invalid format (must be 6 digits if provided)`, field: 'currentpincode' }); }
-  const gender = normalizedRow['gender']?.toLowerCase(); if (gender && gender.trim() !== '' && !['male', 'female', 'other'].includes(gender)) { errors.push({ row: rowNumber, error: `Invalid value (must be 'male', 'female', or 'other' if provided)`, field: 'gender' }); }
-  const phone = normalizedRow['primaryphone']; if (phone && phone.trim() !== '' && !/^\d{7,15}$/.test(phone.replace(/\D/g, ''))) { errors.push({ row: rowNumber, error: `Invalid format (must be 7-15 digits if provided)`, field: 'primaryphone' }); }
-  if (normalizedRow['dateofbirth']) { try { parseFlexibleDate(normalizedRow['dateofbirth'], 'Date of Birth'); } catch (e) { errors.push({ row: rowNumber, error: e.message, field: 'dateofbirth' }); } }
-  if (normalizedRow['joiningdate']) { try { parseFlexibleDate(normalizedRow['joiningdate'], 'Joining Date'); } catch (e) { errors.push({ row: rowNumber, error: e.message, field: 'joiningdate' }); } }
-  return errors;
-}
-
 
 // --- Validation function for Teacher ---
 function validateTeacherRow(normalizedRow, rowNumber) {
-  // (Keep this function exactly as it was in the previous 'role-aware' version)
   const errors = [];
   const requiredKeys = [
     'firstname', 'lastname', 'email', 'primaryphone',
-    'dateofbirth', 'gender', 'joiningdate',
+    'dateofbirth', 'gender',
     'highestqualification', 'totalexperience'
   ];
   requiredKeys.forEach(key => {
@@ -809,19 +779,16 @@ function validateTeacherRow(normalizedRow, rowNumber) {
       errors.push({ row: rowNumber, error: `is required`, field: key });
     }
   });
-  // Optional Field Validations... (email, pincode, gender, phone, dates, experience)
   if (normalizedRow['email'] && !/\S+@\S+\.\S+/.test(normalizedRow['email'])) { errors.push({ row: rowNumber, error: `Invalid format`, field: 'email' }); }
   const pincode = normalizedRow['permanentpincode']; if (pincode && pincode.trim() !== '' && !/^\d{6}$/.test(pincode)) { errors.push({ row: rowNumber, error: `Invalid format (must be 6 digits if provided)`, field: 'permanentpincode' }); }
   const currentPincode = normalizedRow['currentpincode']; if (currentPincode && currentPincode.trim() !== '' && !/^\d{6}$/.test(currentPincode)) { errors.push({ row: rowNumber, error: `Invalid format (must be 6 digits if provided)`, field: 'currentpincode' }); }
   const gender = normalizedRow['gender']?.toLowerCase(); if (gender && gender.trim() !== '' && !['male', 'female', 'other'].includes(gender)) { errors.push({ row: rowNumber, error: `Invalid value (must be 'male', 'female', or 'other' if provided)`, field: 'gender' }); }
   const phone = normalizedRow['primaryphone']; if (phone && phone.trim() !== '' && !/^\d{7,15}$/.test(phone.replace(/\D/g, ''))) { errors.push({ row: rowNumber, error: `Invalid format (must be 7-15 digits if provided)`, field: 'primaryphone' }); }
   if (normalizedRow['dateofbirth']) { try { parseFlexibleDate(normalizedRow['dateofbirth'], 'Date of Birth'); } catch (e) { errors.push({ row: rowNumber, error: e.message, field: 'dateofbirth' }); } }
-  if (normalizedRow['joiningdate']) { try { parseFlexibleDate(normalizedRow['joiningdate'], 'Joining Date'); } catch (e) { errors.push({ row: rowNumber, error: e.message, field: 'joiningdate' }); } }
   const exp = normalizedRow['totalexperience']; if (exp && isNaN(Number(exp))) { errors.push({ row: rowNumber, error: `must be a number`, field: 'totalexperience' }); }
   return errors;
 }
 
-// --- Helper to create Admin Data Object <--- NEW FUNCTION
 async function createAdminFromRow(normalizedRow, schoolIdAsObjectId, userId, schoolCode, creatingUserIdAsObjectId) {
   const email = normalizedRow['email'];
   const finalDateOfBirth = parseFlexibleDate(normalizedRow['dateofbirth'], 'Date of Birth'); if (!finalDateOfBirth) throw new Error('Date of Birth is required and could not be parsed.');
@@ -890,7 +857,7 @@ async function createTeacherFromRow(normalizedRow, schoolIdAsObjectId, userId, s
   // (Keep this function exactly as it was in the previous 'role-aware' version)
   const email = normalizedRow['email'];
   const finalDateOfBirth = parseFlexibleDate(normalizedRow['dateofbirth'], 'Date of Birth'); if (!finalDateOfBirth) throw new Error('Date of Birth is required and could not be parsed.');
-  const finalJoiningDate = parseFlexibleDate(normalizedRow['joiningdate'], 'Joining Date'); if (!finalJoiningDate) throw new Error('Joining Date is required and could not be parsed.');
+  const finalJoiningDate = new Date(); // Default to current date since joiningDate is no longer required
   let temporaryPassword = generateRandomPassword(8); const hashedPassword = await bcrypt.hash(temporaryPassword, 10);
   let gender = normalizedRow['gender']?.toLowerCase(); if (!['male', 'female', 'other'].includes(gender)) gender = 'other';
   const isActiveValue = normalizedRow['isactive']?.toLowerCase(); let isActive = true; if (isActiveValue === 'false' || isActiveValue === 'inactive' || isActiveValue === 'no' || isActiveValue === '0') { isActive = false; }
@@ -926,9 +893,7 @@ async function createTeacherFromRow(normalizedRow, schoolIdAsObjectId, userId, s
       employeeId: normalizedRow['employeeid']?.trim() || userId,
       subjects: normalizedRow['subjects'] ? normalizedRow['subjects'].split(',').map(s => String(s).trim()).filter(Boolean) : [],
       qualification: normalizedRow['highestqualification']?.trim() || '', experience: totalExperience, joiningDate: finalJoiningDate,
-      specialization: normalizedRow['specialization']?.trim() || '', previousExperience: '', dateOfBirth: finalDateOfBirth, gender: gender,
-      bloodGroup: normalizedRow['bloodgroup']?.trim() || '', nationality: normalizedRow['nationality']?.trim() || 'Indian', religion: normalizedRow['religion']?.trim() || '',
-      bankName: normalizedRow['bankname']?.trim() || '', bankAccountNo: normalizedRow['bankaccountno']?.trim() || '', bankIFSC: normalizedRow['bankifsc']?.trim() || '',
+      previousExperience: '', dateOfBirth: finalDateOfBirth, gender: gender,
       classTeacherOf: normalizedRow['classteacherof']?.trim() || '',
     }
   };
@@ -1187,19 +1152,11 @@ function generateCSV(users, role) {
             case 'currentLandmark': value = addressC?.landmark || ''; break;
             case 'aadharNumber': value = personal.aadhaar; break;
             case 'panNumber': value = personal.pan; break;
-            case 'joiningDate': value = teachingInfo.joinDate ? new Date(teachingInfo.joinDate).toISOString().split('T')[0] : ''; break;
             case 'highestQualification': value = teachingInfo.qualification; break;
-            case 'specialization': value = teachingInfo.specialization || ''; break;
             case 'totalExperience': value = teachingInfo.experience; break;
             case 'subjects': value = Array.isArray(teachingInfo.subjects) ? teachingInfo.subjects.join(', ') : ''; break;
             case 'classTeacherOf': value = Array.isArray(teachingInfo.classes) ? teachingInfo.classes.join(', ') : ''; break;
             case 'employeeId': value = teachingInfo.employeeId; break;
-            case 'bankName': value = ''; break; // Not in schema
-            case 'bankAccountNo': value = ''; break; // Not in schema
-            case 'bankIFSC': value = ''; break; // Not in schema
-            case 'bloodGroup': value = personal.bloodGroup; break;
-            case 'nationality': value = personal.nationality; break;
-            case 'religion': value = personal.religion; break;
             case 'isActive': value = user.isActive === false ? 'false' : 'true'; break;
             case 'profileImage': value = user.profileImage || ''; break;
             default: value = '';
@@ -1371,21 +1328,11 @@ function formatUserForExport(user, role) {
     Object.assign(formatted, {
       dateOfBirth: user.teacherDetails.dateOfBirth,
       gender: user.teacherDetails.gender,
-      joiningDate: user.teacherDetails.joiningDate, // Use specific joining date if available
       highestQualification: user.teacherDetails.qualification,
-      specialization: user.teacherDetails.specialization,
       totalExperience: user.teacherDetails.experience,
       subjects: Array.isArray(user.teacherDetails.subjects) ? user.teacherDetails.subjects.join(', ') : '',
       classTeacherOf: user.teacherDetails.classTeacherOf,
       employeeId: user.teacherDetails.employeeId,
-      // ... add other relevant flattened teacherDetails fields from getTeacherHeaders
-      bloodGroup: user.teacherDetails.bloodGroup,
-      nationality: user.teacherDetails.nationality,
-      religion: user.teacherDetails.religion,
-      bankName: user.teacherDetails.bankName,
-      bankAccountNo: user.teacherDetails.bankAccountNo,
-      bankIFSC: user.teacherDetails.bankIFSC,
-
     });
   } else if (role === 'admin' && user.adminDetails) { // <--- NEW: Admin Export Format
     Object.assign(formatted, {
