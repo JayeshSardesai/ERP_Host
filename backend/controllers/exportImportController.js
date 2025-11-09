@@ -758,8 +758,8 @@ function getAdminHeaders() {
 // --- Define Headers (Teacher) ---
 function getTeacherHeaders() {
   return [
-    'userId', 'firstName', 'middleName', 'lastName', 'primaryPhone',
-    'employeeId', 'dateOfBirth', 'isActive'
+    'userId', 'firstName', 'middleName', 'lastName', 'email', 'primaryPhone',
+    'employeeId', 'dateOfBirth', 'isActive', 'profileImage'
   ];
 }
 
@@ -896,6 +896,49 @@ async function createTeacherFromRow(normalizedRow, schoolIdAsObjectId, userId, s
   const firstName = normalizedRow['firstname'] || ''; 
   const lastName = normalizedRow['lastname'] || '';
   const middleName = normalizedRow['middlename'] || '';
+  const email = normalizedRow['email'] || `${userId}@school.edu`; // Use provided email or generate default
+
+  // Handle profile image if provided
+  let profileImagePath = '';
+  console.log(`🔍 DEBUG: Checking profile image for teacher ${userId}`);
+  console.log(`🔍 DEBUG: normalizedRow keys:`, Object.keys(normalizedRow));
+  console.log(`🔍 DEBUG: profileimage value:`, normalizedRow['profileimage']);
+  
+  if (normalizedRow['profileimage'] && normalizedRow['profileimage'].trim() !== '') {
+    // Clean the image path - remove leading ? or other unwanted characters
+    let cleanImagePath = normalizedRow['profileimage'].trim();
+    if (cleanImagePath.startsWith('?')) {
+      cleanImagePath = cleanImagePath.substring(1);
+    }
+    
+    // Skip base64 data URLs for now (they need special handling)
+    if (cleanImagePath.startsWith('data:')) {
+      console.log(`⚠️ Skipping base64 data URL for teacher ${userId} (not supported yet)`);
+      profileImagePath = '';
+    } else {
+      console.log(`📸 Processing profile image for teacher ${userId}: ${cleanImagePath}`);
+      try {
+        profileImagePath = await copyProfilePicture(cleanImagePath, userId, schoolCode);
+        console.log(`✅ Teacher profile image uploaded successfully: ${profileImagePath}`);
+        
+        // Verify the path is not empty
+        if (!profileImagePath || profileImagePath.trim() === '') {
+          console.error(`❌ copyProfilePicture returned empty path for teacher ${userId}`);
+        }
+      } catch (imageError) {
+        console.error(`❌ Failed to upload teacher profile image: ${imageError.message}`);
+        console.error(`❌ Error stack:`, imageError.stack);
+        profileImagePath = ''; // Ensure empty string on failure
+      }
+    }
+  } else {
+    console.log(`ℹ️ No profile image provided for teacher ${userId} (value: "${normalizedRow['profileimage']}")`);
+  }
+
+  // Debug final profileImagePath before creating teacher object
+  console.log(`🔍 DEBUG: Final profileImagePath for teacher ${userId}: "${profileImagePath}"`);
+  console.log(`🔍 DEBUG: profileImagePath type:`, typeof profileImagePath);
+  console.log(`🔍 DEBUG: profileImagePath length:`, profileImagePath ? profileImagePath.length : 'null/undefined');
 
   const newTeacher = {
     _id: new ObjectId(), 
@@ -908,7 +951,7 @@ async function createTeacherFromRow(normalizedRow, schoolIdAsObjectId, userId, s
       lastName, 
       displayName: `${firstName} ${middleName} ${lastName}`.replace(/\s+/g, ' ').trim() 
     },
-    email: `${userId}@school.edu`, // Generate default email from userId
+    email: email,
     password: hashedPassword, 
     temporaryPassword: temporaryPassword, 
     passwordChangeRequired: true, 
@@ -924,7 +967,7 @@ async function createTeacherFromRow(normalizedRow, schoolIdAsObjectId, userId, s
       sameAsPermanent: true
     },
     identity: { aadharNumber: '', panNumber: '' },
-    profileImage: '',
+    profileImage: profileImagePath || null, // Ensure null instead of empty string
     isActive: isActive, 
     createdAt: new Date(), 
     updatedAt: new Date(),
@@ -1168,7 +1211,7 @@ function generateCSV(users, role) {
       return headers.map(header => rowData[header]);
     });
   } else if (role.toLowerCase() === 'teacher') {
-    headers = ['userId', 'firstName', 'middleName', 'lastName', 'primaryPhone', 'employeeId', 'dateOfBirth', 'isActive'];
+    headers = getTeacherHeaders();
     rows = users.map(user => {
       const teacherDetails = user.teacherDetails || {};
       const name = user.name || {};
@@ -1183,10 +1226,16 @@ function generateCSV(users, role) {
             case 'firstName': value = name.firstName; break;
             case 'middleName': value = name.middleName || ''; break;
             case 'lastName': value = name.lastName; break;
+            case 'email': value = user.email || ''; break;
             case 'primaryPhone': value = contact.primaryPhone; break;
             case 'employeeId': value = teacherDetails.employeeId || user.userId; break;
-            case 'dateOfBirth': value = teacherDetails.dateOfBirth ? new Date(teacherDetails.dateOfBirth).toISOString().split('T')[0] : ''; break;
+            case 'dateOfBirth': 
+              // Try multiple possible locations for dateOfBirth
+              const dob = teacherDetails.dateOfBirth || user.dateOfBirth || teacherDetails.personal?.dateOfBirth;
+              value = dob ? new Date(dob).toISOString().split('T')[0] : ''; 
+              break;
             case 'isActive': value = user.isActive === false ? 'false' : 'true'; break;
+            case 'profileImage': value = user.profileImage || user.profilePicture || ''; break;
             default: value = '';
           }
         } catch (e) { console.warn(`Error getting ${header} for teacher ${user.userId}`); } rowData[header] = value ?? '';
