@@ -234,8 +234,8 @@ exports.importUsers = async (req, res) => {
           if (firstRowKeys.has('currentclass') && firstRowKeys.has('currentsection') && firstRowKeys.has('fathername')) {
             inferredRole = 'student';
           }
-          // 2. Then check for teacher
-          else if (firstRowKeys.has('qualification') && firstRowKeys.has('experience') && firstRowKeys.has('subjects')) {
+          // 2. Then check for teacher (qualification and experience are key identifiers)
+          else if (firstRowKeys.has('qualification') && firstRowKeys.has('experience') && !firstRowKeys.has('currentclass') && !firstRowKeys.has('admintype')) {
             inferredRole = 'teacher';
           }
           // 3. Then check for admin
@@ -243,7 +243,7 @@ exports.importUsers = async (req, res) => {
             inferredRole = 'admin';
           }
           else {
-            throw new Error("Could not infer user role (student/teacher/admin) from CSV columns. Ensure headers like 'currentclass'/'fathername' (for students) OR 'qualification'/'experience'/'subjects' (for teachers) OR 'admintype'/'designation' (for admins) are present.");
+            throw new Error("Could not infer user role (student/teacher/admin) from CSV columns. Ensure headers like 'currentclass'/'fathername' (for students) OR 'qualification'/'experience' (for teachers) OR 'admintype'/'designation' (for admins) are present.");
           }
           console.log(`Inferred Role: ${inferredRole}`);
         }
@@ -797,7 +797,7 @@ function validateTeacherRow(normalizedRow, rowNumber) {
   const requiredKeys = [
     'firstname', 'lastname', 'email', 'primaryphone',
     'dateofbirth', 'gender', 'joiningdate',
-    'qualification', 'experience', 'subjects'
+    'qualification', 'experience'
   ];
   requiredKeys.forEach(key => {
     if (!normalizedRow.hasOwnProperty(key) || normalizedRow[key] === undefined || normalizedRow[key] === null || String(normalizedRow[key]).trim() === '') {
