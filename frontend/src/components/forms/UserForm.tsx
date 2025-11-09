@@ -661,80 +661,54 @@ const UserForm: React.FC<UserFormProps> = ({
         <div>
           <h3 className="text-lg font-medium text-gray-900 mb-3">Teacher Information</h3>
           
-          {/* Professional Information */}
-          <div className="mb-4">
-            <h4 className="text-md font-medium text-gray-800 mb-2">Professional Information</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Employee ID</label>
-                <input
-                  type="text"
-                  value={(formData as TeacherFormData).employeeId || ''}
-                  onChange={(e) => handleInputChange('employeeId', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                  placeholder="Auto-generated if empty"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Joining Date</label>
-                <input
-                  type="date"
-                  value={(formData as TeacherFormData).joiningDate || ''}
-                  onChange={(e) => handleInputChange('joiningDate', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Qualification *</label>
-                <input
-                  type="text"
-                  value={(formData as TeacherFormData).qualification || ''}
-                  onChange={(e) => handleInputChange('qualification', e.target.value)}
-                  className={`w-full px-3 py-2 border rounded-lg ${formErrors.qualification ? 'border-red-500' : 'border-gray-300'}`}
-                  placeholder="e.g., B.Ed, M.Ed, Ph.D"
-                />
-                {formErrors.qualification && <p className="text-red-600 text-sm mt-1">{formErrors.qualification}</p>}
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Specialization</label>
-                <input
-                  type="text"
-                  value={(formData as TeacherFormData).specialization || ''}
-                  onChange={(e) => handleInputChange('specialization', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                  placeholder="e.g., Mathematics, Physics"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Experience (Years)</label>
-                <input
-                  type="number"
-                  value={(formData as TeacherFormData).experience || 0}
-                  onChange={(e) => handleInputChange('experience', parseInt(e.target.value) || 0)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                  placeholder="Total years of experience"
-                  min="0"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Previous Experience</label>
-                <input
-                  type="text"
-                  value={(formData as TeacherFormData).previousExperience || ''}
-                  onChange={(e) => handleInputChange('previousExperience', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                  placeholder="Brief description of previous work"
-                />
-              </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Employee ID</label>
+              <input
+                type="text"
+                value={(formData as TeacherFormData).employeeId || ''}
+                onChange={(e) => handleInputChange('employeeId', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                placeholder="Auto-generated if empty"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth *</label>
+              <input
+                type="date"
+                value={(formData as TeacherFormData).dateOfBirth || ''}
+                onChange={(e) => handleInputChange('dateOfBirth', e.target.value)}
+                className={`w-full px-3 py-2 border rounded-lg ${formErrors.dateOfBirth ? 'border-red-500' : 'border-gray-300'}`}
+              />
+              {formErrors.dateOfBirth && <p className="text-red-600 text-sm mt-1">{formErrors.dateOfBirth}</p>}
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Qualification *</label>
+              <input
+                type="text"
+                value={(formData as TeacherFormData).qualification || ''}
+                onChange={(e) => handleInputChange('qualification', e.target.value)}
+                className={`w-full px-3 py-2 border rounded-lg ${formErrors.qualification ? 'border-red-500' : 'border-gray-300'}`}
+                placeholder="Enter highest qualification"
+              />
+              {formErrors.qualification && <p className="text-red-600 text-sm mt-1">{formErrors.qualification}</p>}
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Experience (Years)</label>
+              <input
+                type="number"
+                value={(formData as TeacherFormData).experience || 0}
+                onChange={(e) => handleInputChange('experience', parseInt(e.target.value) || 0)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                placeholder="Enter years of experience"
+                min="0"
+              />
             </div>
           </div>
 
-          {/* Subjects */}
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-1">Subjects *</label>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2 max-h-40 overflow-y-auto border border-gray-300 rounded-lg p-3">
@@ -758,113 +732,6 @@ const UserForm: React.FC<UserFormProps> = ({
               ))}
             </div>
             {formErrors.subjects && <p className="text-red-600 text-sm mt-1">{formErrors.subjects}</p>}
-          </div>
-
-          {/* Personal Information */}
-          <div className="mb-4">
-            <h4 className="text-md font-medium text-gray-800 mb-2">Personal Information</h4>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth *</label>
-                <input
-                  type="date"
-                  value={(formData as TeacherFormData).dateOfBirth || ''}
-                  onChange={(e) => handleInputChange('dateOfBirth', e.target.value)}
-                  className={`w-full px-3 py-2 border rounded-lg ${formErrors.dateOfBirth ? 'border-red-500' : 'border-gray-300'}`}
-                />
-                {formErrors.dateOfBirth && <p className="text-red-600 text-sm mt-1">{formErrors.dateOfBirth}</p>}
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Gender *</label>
-                <select
-                  value={(formData as TeacherFormData).gender || 'male'}
-                  onChange={(e) => handleInputChange('gender', e.target.value)}
-                  className={`w-full px-3 py-2 border rounded-lg ${formErrors.gender ? 'border-red-500' : 'border-gray-300'}`}
-                >
-                  <option value="male">Male</option>
-                  <option value="female">Female</option>
-                  <option value="other">Other</option>
-                </select>
-                {formErrors.gender && <p className="text-red-600 text-sm mt-1">{formErrors.gender}</p>}
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Blood Group</label>
-                <select
-                  value={(formData as TeacherFormData).bloodGroup || ''}
-                  onChange={(e) => handleInputChange('bloodGroup', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                >
-                  <option value="">Select Blood Group</option>
-                  {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map(bg => (
-                    <option key={bg} value={bg}>{bg}</option>
-                  ))}
-                </select>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Nationality</label>
-                <input
-                  type="text"
-                  value={(formData as TeacherFormData).nationality || 'Indian'}
-                  onChange={(e) => handleInputChange('nationality', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                  placeholder="Enter nationality"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Religion</label>
-                <input
-                  type="text"
-                  value={(formData as TeacherFormData).religion || ''}
-                  onChange={(e) => handleInputChange('religion', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                  placeholder="Enter religion"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Banking Information */}
-          <div className="mb-4">
-            <h4 className="text-md font-medium text-gray-800 mb-2">Banking Information</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Bank Name</label>
-                <input
-                  type="text"
-                  value={(formData as TeacherFormData).bankName || ''}
-                  onChange={(e) => handleInputChange('bankName', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                  placeholder="Enter bank name"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Account Number</label>
-                <input
-                  type="text"
-                  value={(formData as TeacherFormData).bankAccountNo || ''}
-                  onChange={(e) => handleInputChange('bankAccountNo', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                  placeholder="Enter account number"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">IFSC Code</label>
-                <input
-                  type="text"
-                  value={(formData as TeacherFormData).bankIFSC || ''}
-                  onChange={(e) => handleInputChange('bankIFSC', e.target.value.toUpperCase())}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                  placeholder="e.g., SBIN0001234"
-                  maxLength={11}
-                />
-              </div>
-            </div>
           </div>
         </div>
       )}

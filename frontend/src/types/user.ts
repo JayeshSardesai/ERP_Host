@@ -110,16 +110,15 @@ export interface StudentDetails {
 
 export interface TeacherDetails {
   employeeId: string;
-  subjects: string[] | Array<{ subjectCode?: string; subjectName?: string; classes?: string[]; isPrimary?: boolean }>;
-  qualification: string | { highest?: string; specialization?: string; university?: string; year?: number };
-  experience: number | { total?: number; atCurrentSchool?: number };
+  subjects: string[];
+  qualification: string;
+  experience: number;
   joiningDate?: string;
   
   // Professional Details
   specialization?: string;
   previousExperience?: string;
   trainingCompleted?: string[];
-  classTeacherOf?: string;
   
   // Personal Details
   dateOfBirth: string;
@@ -128,19 +127,11 @@ export interface TeacherDetails {
   nationality: string;
   religion?: string;
   
-  // Banking Information (flat structure)
+  // Banking Information
   bankName?: string;
   bankAccountNo?: string;
   bankIFSC?: string;
   panNumber?: string;
-  
-  // Banking Information (nested structure - for backward compatibility)
-  bankDetails?: {
-    bankName?: string;
-    accountNumber?: string;
-    ifscCode?: string;
-    branchName?: string;
-  };
   
   // Emergency Contact
   emergencyContactName?: string;
@@ -596,54 +587,24 @@ export const transformUserToFormData = (user: User): UserFormData => {
 
     case 'teacher':
       if (user.teacherDetails) {
-        // Handle both flat and nested structures for backward compatibility
-        const td = user.teacherDetails;
-        
-        // Extract qualification - handle both flat string and nested object
-        const qualification = typeof td.qualification === 'string' 
-          ? td.qualification 
-          : (td.qualification?.highest || '');
-        
-        // Extract experience - handle both flat number and nested object
-        const experience = typeof td.experience === 'number' 
-          ? td.experience 
-          : (td.experience?.total || 0);
-        
-        // Extract subjects - handle both flat array and nested array of objects
-        let subjects: string[] = [];
-        if (Array.isArray(td.subjects)) {
-          subjects = td.subjects.map(s => 
-            typeof s === 'string' ? s : (s.subjectName || s.subjectCode || '')
-          ).filter(Boolean);
-        }
-        
-        // Extract bank details - handle both flat and nested structures
-        const bankName = td.bankName || td.bankDetails?.bankName || '';
-        const bankAccountNo = td.bankAccountNo || td.bankDetails?.accountNumber || '';
-        const bankIFSC = td.bankIFSC || td.bankDetails?.ifscCode || '';
-        
-        // Extract specialization - handle both flat and nested
-        const specialization = td.specialization || 
-          (typeof td.qualification === 'object' ? td.qualification?.specialization : '') || '';
-        
         return {
           ...baseData,
           role: 'teacher',
-          employeeId: td.employeeId || '',
-          subjects: subjects,
-          qualification: qualification,
-          experience: experience,
-          joiningDate: td.joiningDate || '',
-          specialization: specialization,
-          previousExperience: td.previousExperience || '',
-          dateOfBirth: td.dateOfBirth || '',
-          gender: td.gender || 'male',
-          bloodGroup: td.bloodGroup || '',
-          nationality: td.nationality || 'Indian',
-          religion: td.religion || '',
-          bankName: bankName,
-          bankAccountNo: bankAccountNo,
-          bankIFSC: bankIFSC
+          employeeId: user.teacherDetails.employeeId,
+          subjects: user.teacherDetails.subjects,
+          qualification: user.teacherDetails.qualification,
+          experience: user.teacherDetails.experience,
+          joiningDate: user.teacherDetails.joiningDate || '',
+          specialization: user.teacherDetails.specialization || '',
+          previousExperience: user.teacherDetails.previousExperience || '',
+          dateOfBirth: user.teacherDetails.dateOfBirth,
+          gender: user.teacherDetails.gender,
+          bloodGroup: user.teacherDetails.bloodGroup || '',
+          nationality: user.teacherDetails.nationality,
+          religion: user.teacherDetails.religion || '',
+          bankName: user.teacherDetails.bankName || '',
+          bankAccountNo: user.teacherDetails.bankAccountNo || '',
+          bankIFSC: user.teacherDetails.bankIFSC || ''
         } as TeacherFormData;
       }
       break;
