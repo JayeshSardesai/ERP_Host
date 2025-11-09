@@ -697,63 +697,14 @@ const UserForm: React.FC<UserFormProps> = ({
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Experience (Years) *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Experience (Years)</label>
               <input
                 type="number"
                 value={(formData as TeacherFormData).experience || 0}
                 onChange={(e) => handleInputChange('experience', parseInt(e.target.value) || 0)}
-                className={`w-full px-3 py-2 border rounded-lg ${formErrors.experience ? 'border-red-500' : 'border-gray-300'}`}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                 placeholder="Enter years of experience"
                 min="0"
-              />
-              {formErrors.experience && <p className="text-red-600 text-sm mt-1">{formErrors.experience}</p>}
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Gender *</label>
-              <select
-                value={(formData as TeacherFormData).gender || ''}
-                onChange={(e) => handleInputChange('gender', e.target.value)}
-                className={`w-full px-3 py-2 border rounded-lg ${formErrors.gender ? 'border-red-500' : 'border-gray-300'}`}
-              >
-                <option value="">Select Gender</option>
-                <option value="male">Male</option>
-                <option value="female">Female</option>
-                <option value="other">Other</option>
-              </select>
-              {formErrors.gender && <p className="text-red-600 text-sm mt-1">{formErrors.gender}</p>}
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Joining Date *</label>
-              <input
-                type="date"
-                value={(formData as TeacherFormData).joiningDate || ''}
-                onChange={(e) => handleInputChange('joiningDate', e.target.value)}
-                className={`w-full px-3 py-2 border rounded-lg ${formErrors.joiningDate ? 'border-red-500' : 'border-gray-300'}`}
-              />
-              {formErrors.joiningDate && <p className="text-red-600 text-sm mt-1">{formErrors.joiningDate}</p>}
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Specialization</label>
-              <input
-                type="text"
-                value={(formData as TeacherFormData).specialization || ''}
-                onChange={(e) => handleInputChange('specialization', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                placeholder="Enter specialization (optional)"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Religion</label>
-              <input
-                type="text"
-                value={(formData as TeacherFormData).religion || ''}
-                onChange={(e) => handleInputChange('religion', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                placeholder="Enter religion (optional)"
               />
             </div>
           </div>
